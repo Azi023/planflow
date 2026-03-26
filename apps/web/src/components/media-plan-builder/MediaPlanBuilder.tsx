@@ -533,70 +533,6 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
       .finally(() => setInitialLoading(false));
   }, [props.groupId]);
 
-  // After plan loads, re-trigger KPI calculation for rows with budget but no saved kpis
-  useEffect(() => {
-    if (initialLoading || didInitCalc.current) return;
-    if (!props.groupId) return;
-    didInitCalc.current = true;
-    planRowsRef.current.forEach((row) => {
-      if (row.budget && !row.kpis && !row.loading) {
-        calcRow(row.id);
-      }
-    });
-  }, [initialLoading, props.groupId, calcRow]);
-
-  const hdr = (patch: Partial<PlanHeader>) => setHeader((h) => ({ ...h, ...patch }));
-
-  const activeVariant = variants[activeIdx];
-  const activeRows = activeVariant.rows;
-
-  const selectedClient = clients.find((c) => c.id === header.clientId);
-  const products: Product[] = selectedClient?.products ?? [];
-
-  // Budget math — supports two fee lines
-  const totalBudgetNum = parseFloat(header.totalBudget) || 0;
-  const fee1Num = parseFloat(header.fee1Pct) || 0;
-  const fee2Num = parseFloat(header.fee2Pct) || 0;
-  const totalFeePct = fee1Num + fee2Num;
-  const mediaSpend = totalFeePct > 0 ? totalBudgetNum / (1 + totalFeePct / 100) : totalBudgetNum;
-  const fee1Amount = mediaSpend * (fee1Num / 100);
-  const fee2Amount = mediaSpend * (fee2Num / 100);
-  const bufferNum = parseFloat(header.bufferPct) || 0;
-  const rowBudgetTotal = activeRows.reduce((s, r) => s + (parseFloat(r.budget) || 0), 0);
-  const duration = calcDuration(header.startDate, header.endDate);
-
-  // ─── Variant management ───────────────────────────────────────────────────
-
-  const updateActiveRows = useCallback(
-    (updater: (rows: PlanRow[]) => PlanRow[]) => {
-      setVariants((vs) =>
-        vs.map((v, i) => (i !== activeIdxRef.current ? v : { ...v, rows: updater(v.rows) })),
-      );
-    },
-    [],
-  );
-
-  const handleDuplicate = () => {
-    const src = variants[activeIdxRef.current].rows;
-    const groupId = variants[0].variantGroupId ?? variants[0].savedId;
-    const newVariant: PlanVariant = {
-      name: `Option ${variants.length + 1}`,
-      rows: src.map((r) => ({
-        ...r,
-        id: crypto.randomUUID(),
-        kpis: null,
-        loading: false,
-        noData: false,
-        currencyMismatch: false,
-      })),
-      savedId: null,
-      referenceNumber: null,
-      variantGroupId: groupId,
-    };
-    setVariants((vs) => [...vs, newVariant]);
-    setActiveIdx(variants.length);
-  };
-
   // ─── Auto-calculate (debounced, stable closure via refs) ──────────────────
 
   const calcRow = useCallback(
@@ -682,6 +618,70 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
     },
     [],
   );
+
+  // After plan loads, re-trigger KPI calculation for rows with budget but no saved kpis
+  useEffect(() => {
+    if (initialLoading || didInitCalc.current) return;
+    if (!props.groupId) return;
+    didInitCalc.current = true;
+    planRowsRef.current.forEach((row) => {
+      if (row.budget && !row.kpis && !row.loading) {
+        calcRow(row.id);
+      }
+    });
+  }, [initialLoading, props.groupId, calcRow]);
+
+  const hdr = (patch: Partial<PlanHeader>) => setHeader((h) => ({ ...h, ...patch }));
+
+  const activeVariant = variants[activeIdx];
+  const activeRows = activeVariant.rows;
+
+  const selectedClient = clients.find((c) => c.id === header.clientId);
+  const products: Product[] = selectedClient?.products ?? [];
+
+  // Budget math — supports two fee lines
+  const totalBudgetNum = parseFloat(header.totalBudget) || 0;
+  const fee1Num = parseFloat(header.fee1Pct) || 0;
+  const fee2Num = parseFloat(header.fee2Pct) || 0;
+  const totalFeePct = fee1Num + fee2Num;
+  const mediaSpend = totalFeePct > 0 ? totalBudgetNum / (1 + totalFeePct / 100) : totalBudgetNum;
+  const fee1Amount = mediaSpend * (fee1Num / 100);
+  const fee2Amount = mediaSpend * (fee2Num / 100);
+  const bufferNum = parseFloat(header.bufferPct) || 0;
+  const rowBudgetTotal = activeRows.reduce((s, r) => s + (parseFloat(r.budget) || 0), 0);
+  const duration = calcDuration(header.startDate, header.endDate);
+
+  // ─── Variant management ───────────────────────────────────────────────────
+
+  const updateActiveRows = useCallback(
+    (updater: (rows: PlanRow[]) => PlanRow[]) => {
+      setVariants((vs) =>
+        vs.map((v, i) => (i !== activeIdxRef.current ? v : { ...v, rows: updater(v.rows) })),
+      );
+    },
+    [],
+  );
+
+  const handleDuplicate = () => {
+    const src = variants[activeIdxRef.current].rows;
+    const groupId = variants[0].variantGroupId ?? variants[0].savedId;
+    const newVariant: PlanVariant = {
+      name: `Option ${variants.length + 1}`,
+      rows: src.map((r) => ({
+        ...r,
+        id: crypto.randomUUID(),
+        kpis: null,
+        loading: false,
+        noData: false,
+        currencyMismatch: false,
+      })),
+      savedId: null,
+      referenceNumber: null,
+      variantGroupId: groupId,
+    };
+    setVariants((vs) => [...vs, newVariant]);
+    setActiveIdx(variants.length);
+  };
 
   const handleRowChange = useCallback(
     (id: string, patch: Partial<PlanRow>) => {
