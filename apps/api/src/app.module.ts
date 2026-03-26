@@ -17,6 +17,7 @@ import { AudiencesModule } from './audiences/audiences.module';
 import { CreativeTypesModule } from './creative-types/creative-types.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { AuthModule } from './auth/auth.module';
+import { ExportModule } from './export/export.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 
 @Module({
@@ -51,6 +52,7 @@ import { JwtAuthGuard } from './auth/jwt-auth.guard';
     AudiencesModule,
     CreativeTypesModule,
     DashboardModule,
+    ExportModule,
   ],
   providers: [
     {

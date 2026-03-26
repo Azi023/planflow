@@ -120,3 +120,43 @@ export function fetchPlanGroup(groupId: string): Promise<MediaPlan[]> {
 export function fetchDashboardStats(): Promise<any> {
   return request('/dashboard/stats');
 }
+
+// ─── Export ───────────────────────────────────────────────────────────────────
+
+async function downloadExport(path: string, filename: string): Promise<void> {
+  const token =
+    typeof window !== 'undefined' ? localStorage.getItem('planflow_token') : null;
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(`${BASE}${path}`, { headers });
+  if (res.status === 401) {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('planflow_token');
+      localStorage.removeItem('planflow_user');
+      window.location.href = '/login';
+    }
+    throw new Error('Unauthorized');
+  }
+  if (!res.ok) {
+    const msg = await res.text().catch(() => res.statusText);
+    throw new Error(`Export ${path}: ${res.status} — ${msg}`);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+export function exportPlanExcel(planId: string, filename: string): Promise<void> {
+  return downloadExport(`/media-plans/${planId}/export/excel`, filename);
+}
+
+export function exportPlanPptx(planId: string, filename: string): Promise<void> {
+  return downloadExport(`/media-plans/${planId}/export/pptx`, filename);
+}
