@@ -1,0 +1,18 @@
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { MediaPlan } from '../entities/media-plan.entity';
+import { MediaPlanRow } from '../entities/media-plan-row.entity';
+import { Benchmark } from '../entities/benchmark.entity';
+import { BenchmarksModule } from '../benchmarks/benchmarks.module';
+import { MediaPlansController } from './media-plans.controller';
+import { MediaPlansService } from './media-plans.service';
+
+@Module({
+  imports: [
+    TypeOrmModule.forFeature([MediaPlan, MediaPlanRow, Benchmark]),
+    BenchmarksModule,
+  ],
+  controllers: [MediaPlansController],
+  providers: [MediaPlansService],
+})
+export class MediaPlansModule {}
