@@ -30,8 +30,25 @@ function fmtRange(
   return `${fmt(low, decimals)} – ${fmt(high, decimals)}`;
 }
 
-function kpiVal(kpis: Record<string, unknown>, lowKey: string, highKey: string): string {
-  return fmtRange(kpis[lowKey] as number, kpis[highKey] as number);
+/** Safely extract a KPI value from either nested or flat projectedKpis structure */
+function extractKpi(
+  kpis: Record<string, unknown>,
+  nestedPath: string,
+  flatKey: string,
+): number | null {
+  const parts = nestedPath.split('.');
+  let val: unknown = kpis;
+  for (const part of parts) {
+    if (val == null || typeof val !== 'object') {
+      val = undefined;
+      break;
+    }
+    val = (val as Record<string, unknown>)[part];
+  }
+  if (val != null && !isNaN(Number(val))) return Number(val);
+  const flat = kpis[flatKey];
+  if (flat != null && !isNaN(Number(flat))) return Number(flat);
+  return null;
 }
 
 function monthYear(date?: string | Date | null): string {
@@ -57,11 +74,20 @@ function hdrCell(text: string): PptxGenJS.TableCell {
   return cell(text, { bold: true, color: WHITE, fill: { color: GREEN } });
 }
 
-function dataCell(text: string, bg: string, align?: PptxGenJS.HAlign, bold?: boolean, color?: string): PptxGenJS.TableCell {
+function dataCell(
+  text: string,
+  bg: string,
+  align?: PptxGenJS.HAlign,
+  bold?: boolean,
+  color?: string,
+): PptxGenJS.TableCell {
   return cell(text, { fill: { color: bg }, align, bold, color });
 }
 
-export async function buildPptxBuffer(plan: MediaPlan, rows: MediaPlanRow[]): Promise<Buffer> {
+export async function buildPptxBuffer(
+  plan: MediaPlan,
+  rows: MediaPlanRow[],
+): Promise<Buffer> {
   const pptx = new PptxGenJS();
 
   pptx.layout = 'LAYOUT_WIDE'; // 13.33" x 7.5"
@@ -71,7 +97,8 @@ export async function buildPptxBuffer(plan: MediaPlan, rows: MediaPlanRow[]): Pr
   pptx.title = `KPIs for ${plan.campaignName ?? 'Campaign'}`;
 
   const clientName =
-    (plan as unknown as { client?: { name?: string } }).client?.name ?? 'Client';
+    (plan as unknown as { client?: { name?: string } }).client?.name ??
+    'Client';
   const campaignName = plan.campaignName ?? 'Campaign';
   const currency = plan.currency ?? 'LKR';
 
@@ -79,45 +106,75 @@ export async function buildPptxBuffer(plan: MediaPlan, rows: MediaPlanRow[]): Pr
   const slide1 = pptx.addSlide();
 
   slide1.addShape(pptx.ShapeType.rect, {
-    x: 0, y: 0, w: '100%', h: '55%',
+    x: 0,
+    y: 0,
+    w: '100%',
+    h: '55%',
     fill: { color: BRAND_BLUE },
   });
 
   slide1.addText('DC Group | Jasmin Media', {
-    x: 0.5, y: 0.3, w: 12, h: 0.5,
-    fontSize: 14, color: WHITE,
+    x: 0.5,
+    y: 0.3,
+    w: 12,
+    h: 0.5,
+    fontSize: 14,
+    color: WHITE,
     fontFace: 'Inter',
   });
 
   slide1.addText(`KPI's for ${campaignName}`, {
-    x: 0.5, y: 1.5, w: 12, h: 1.2,
-    fontSize: 32, color: WHITE, bold: true,
+    x: 0.5,
+    y: 1.5,
+    w: 12,
+    h: 1.2,
+    fontSize: 32,
+    color: WHITE,
+    bold: true,
     fontFace: 'Inter',
   });
 
   slide1.addText(monthYear(plan.startDate) || monthYear(plan.createdAt), {
-    x: 0.5, y: 2.8, w: 10, h: 0.6,
-    fontSize: 18, color: 'D0E8F5',
+    x: 0.5,
+    y: 2.8,
+    w: 10,
+    h: 0.6,
+    fontSize: 18,
+    color: 'D0E8F5',
     fontFace: 'Inter',
   });
 
   slide1.addText(clientName, {
-    x: 0.5, y: 4.5, w: 12, h: 0.6,
-    fontSize: 22, color: BRAND_DARK, bold: true,
+    x: 0.5,
+    y: 4.5,
+    w: 12,
+    h: 0.6,
+    fontSize: 22,
+    color: BRAND_DARK,
+    bold: true,
     fontFace: 'Inter',
   });
 
   if (plan.preparedBy) {
     slide1.addText(`Prepared by: ${plan.preparedBy}`, {
-      x: 0.5, y: 5.2, w: 8, h: 0.4,
-      fontSize: 11, color: BRAND_GREY,
+      x: 0.5,
+      y: 5.2,
+      w: 8,
+      h: 0.4,
+      fontSize: 11,
+      color: BRAND_GREY,
       fontFace: 'Inter',
     });
   }
 
   slide1.addText('www.jasmin-media.com', {
-    x: 0.5, y: 6.9, w: 12, h: 0.35,
-    fontSize: 10, color: BRAND_GREY, italic: true,
+    x: 0.5,
+    y: 6.9,
+    w: 12,
+    h: 0.35,
+    fontSize: 10,
+    color: BRAND_GREY,
+    italic: true,
     fontFace: 'Inter',
     align: 'center',
   });
@@ -126,12 +183,20 @@ export async function buildPptxBuffer(plan: MediaPlan, rows: MediaPlanRow[]): Pr
   const slide2 = pptx.addSlide();
 
   slide2.addShape(pptx.ShapeType.rect, {
-    x: 0, y: 0, w: '100%', h: 0.8,
+    x: 0,
+    y: 0,
+    w: '100%',
+    h: 0.8,
     fill: { color: BRAND_BLUE },
   });
   slide2.addText('Investment & KPIs — Audience Targeting', {
-    x: 0.3, y: 0.1, w: 12, h: 0.6,
-    fontSize: 18, color: WHITE, bold: true,
+    x: 0.3,
+    y: 0.1,
+    w: 12,
+    h: 0.6,
+    fontSize: 18,
+    color: WHITE,
+    bold: true,
     fontFace: 'Inter',
   });
 
@@ -154,13 +219,32 @@ export async function buildPptxBuffer(plan: MediaPlan, rows: MediaPlanRow[]): Pr
       dataCell(row.audienceSize ?? '', bg),
       dataCell(row.budget ? fmt(Number(row.budget)) : '—', bg, 'right'),
       dataCell(plan.campaignPeriod ?? '', bg),
-      dataCell(fmtRange(kpis['cpmLow'] as number, kpis['cpmHigh'] as number, 2), bg, 'center'),
-      dataCell(kpiVal(kpis, 'frequencyLow', 'frequencyHigh'), bg, 'center'),
+      dataCell(
+        fmtRange(
+          extractKpi(kpis, 'benchmark.cpmLow', 'cpmLow'),
+          extractKpi(kpis, 'benchmark.cpmHigh', 'cpmHigh'),
+          2,
+        ),
+        bg,
+        'center',
+      ),
+      dataCell(
+        fmtRange(
+          extractKpi(kpis, 'frequency.low', 'frequencyLow'),
+          extractKpi(kpis, 'frequency.high', 'frequencyHigh'),
+          1,
+        ),
+        bg,
+        'center',
+      ),
     ];
   });
 
   slide2.addTable([audienceHeaderRow, ...audienceDataRows], {
-    x: 0.3, y: 1.0, w: 12.7, h: 5.8,
+    x: 0.3,
+    y: 1.0,
+    w: 12.7,
+    h: 5.8,
     fontSize: 10,
     border: { pt: 0.5, color: 'E1E3EA' },
     colW: [2.2, 3.0, 1.5, 1.5, 1.5, 1.5, 1.5],
@@ -170,8 +254,14 @@ export async function buildPptxBuffer(plan: MediaPlan, rows: MediaPlanRow[]): Pr
   });
 
   slide2.addText('www.jasmin-media.com', {
-    x: 0.3, y: 7.1, w: 12.7, h: 0.3,
-    fontSize: 9, color: BRAND_GREY, italic: true, align: 'center',
+    x: 0.3,
+    y: 7.1,
+    w: 12.7,
+    h: 0.3,
+    fontSize: 9,
+    color: BRAND_GREY,
+    italic: true,
+    align: 'center',
     fontFace: 'Inter',
   });
 
@@ -179,12 +269,20 @@ export async function buildPptxBuffer(plan: MediaPlan, rows: MediaPlanRow[]): Pr
   const slide3 = pptx.addSlide();
 
   slide3.addShape(pptx.ShapeType.rect, {
-    x: 0, y: 0, w: '100%', h: 0.8,
+    x: 0,
+    y: 0,
+    w: '100%',
+    h: 0.8,
     fill: { color: BRAND_BLUE },
   });
   slide3.addText('Investment & KPIs', {
-    x: 0.3, y: 0.1, w: 12, h: 0.6,
-    fontSize: 18, color: WHITE, bold: true,
+    x: 0.3,
+    y: 0.1,
+    w: 12,
+    h: 0.6,
+    fontSize: 18,
+    color: WHITE,
+    bold: true,
     fontFace: 'Inter',
   });
 
@@ -206,17 +304,33 @@ export async function buildPptxBuffer(plan: MediaPlan, rows: MediaPlanRow[]): Pr
     const kpis = (row.projectedKpis ?? {}) as Record<string, unknown>;
     const budget = Number(row.budget) || 0;
     budgetTotal += budget;
-    impressionsLowTotal += Number(kpis['impressionsLow'] ?? 0);
-    impressionsHighTotal += Number(kpis['impressionsHigh'] ?? 0);
+    impressionsLowTotal +=
+      extractKpi(kpis, 'impressions.low', 'impressionsLow') ?? 0;
+    impressionsHighTotal +=
+      extractKpi(kpis, 'impressions.high', 'impressionsHigh') ?? 0;
 
     const bg = idx % 2 === 0 ? WHITE : BRAND_LIGHT;
     return [
       dataCell(row.platform ?? '', bg),
       dataCell(campaignName, bg),
       dataCell(row.creative ?? '', bg),
-      dataCell(row.adType ?? '', bg),
-      dataCell(kpiVal(kpis, 'videoViewsLow', 'videoViewsHigh'), bg, 'center'),
-      dataCell(kpiVal(kpis, 'impressionsLow', 'impressionsHigh'), bg, 'center'),
+      dataCell(row.buyType ?? row.adType ?? '', bg),
+      dataCell(
+        fmtRange(
+          extractKpi(kpis, 'videoViews2s.low', 'videoViewsLow'),
+          extractKpi(kpis, 'videoViews2s.high', 'videoViewsHigh'),
+        ),
+        bg,
+        'center',
+      ),
+      dataCell(
+        fmtRange(
+          extractKpi(kpis, 'impressions.low', 'impressionsLow'),
+          extractKpi(kpis, 'impressions.high', 'impressionsHigh'),
+        ),
+        bg,
+        'center',
+      ),
       dataCell(budget ? fmt(budget) : '—', bg, 'right'),
     ];
   });
@@ -227,12 +341,20 @@ export async function buildPptxBuffer(plan: MediaPlan, rows: MediaPlanRow[]): Pr
     dataCell('', GREEN_LIGHT),
     dataCell('', GREEN_LIGHT),
     dataCell('', GREEN_LIGHT),
-    dataCell(fmtRange(impressionsLowTotal || null, impressionsHighTotal || null), GREEN_LIGHT, 'center', true),
+    dataCell(
+      fmtRange(impressionsLowTotal || null, impressionsHighTotal || null),
+      GREEN_LIGHT,
+      'center',
+      true,
+    ),
     dataCell(fmt(budgetTotal), GREEN_LIGHT, 'right', true, GREEN),
   ];
 
   slide3.addTable([kpiHeaderRow, ...kpiDataRows, totalRow], {
-    x: 0.3, y: 1.0, w: 12.7, h: 5.2,
+    x: 0.3,
+    y: 1.0,
+    w: 12.7,
+    h: 5.2,
     fontSize: 10,
     border: { pt: 0.5, color: 'E1E3EA' },
     colW: [1.8, 2.0, 1.8, 1.5, 1.8, 1.8, 2.0],
@@ -243,8 +365,12 @@ export async function buildPptxBuffer(plan: MediaPlan, rows: MediaPlanRow[]): Pr
 
   if (plan.campaignPeriod) {
     slide3.addText(`Campaign Duration: ${plan.campaignPeriod}`, {
-      x: 0.3, y: 6.35, w: 8, h: 0.3,
-      fontSize: 9, color: BRAND_GREY,
+      x: 0.3,
+      y: 6.35,
+      w: 8,
+      h: 0.3,
+      fontSize: 9,
+      color: BRAND_GREY,
       fontFace: 'Inter',
     });
   }
@@ -252,16 +378,27 @@ export async function buildPptxBuffer(plan: MediaPlan, rows: MediaPlanRow[]): Pr
   slide3.addText(
     'Results and costs are influenced by several external factors including audience competition, seasonality, and platform algorithm changes. All KPI estimates are indicative ranges.',
     {
-      x: 0.3, y: 6.7, w: 12.7, h: 0.55,
-      fontSize: 8, color: RED, italic: true,
+      x: 0.3,
+      y: 6.7,
+      w: 12.7,
+      h: 0.55,
+      fontSize: 8,
+      color: RED,
+      italic: true,
       fontFace: 'Inter',
       align: 'left',
     },
   );
 
   slide3.addText('www.jasmin-media.com', {
-    x: 0.3, y: 7.1, w: 12.7, h: 0.3,
-    fontSize: 9, color: BRAND_GREY, italic: true, align: 'center',
+    x: 0.3,
+    y: 7.1,
+    w: 12.7,
+    h: 0.3,
+    fontSize: 9,
+    color: BRAND_GREY,
+    italic: true,
+    align: 'center',
     fontFace: 'Inter',
   });
 
@@ -269,27 +406,44 @@ export async function buildPptxBuffer(plan: MediaPlan, rows: MediaPlanRow[]): Pr
   const slideEnd = pptx.addSlide();
 
   slideEnd.addShape(pptx.ShapeType.rect, {
-    x: 0, y: 0, w: '100%', h: '100%',
+    x: 0,
+    y: 0,
+    w: '100%',
+    h: '100%',
     fill: { color: BRAND_BLUE },
   });
 
   slideEnd.addText('Presented by', {
-    x: 0.5, y: 2.8, w: 12.3, h: 0.7,
-    fontSize: 20, color: 'D0E8F5',
+    x: 0.5,
+    y: 2.8,
+    w: 12.3,
+    h: 0.7,
+    fontSize: 20,
+    color: 'D0E8F5',
     fontFace: 'Inter',
     align: 'center',
   });
 
   slideEnd.addText('DC Group | Jasmin Media', {
-    x: 0.5, y: 3.5, w: 12.3, h: 1.0,
-    fontSize: 36, color: WHITE, bold: true,
+    x: 0.5,
+    y: 3.5,
+    w: 12.3,
+    h: 1.0,
+    fontSize: 36,
+    color: WHITE,
+    bold: true,
     fontFace: 'Inter',
     align: 'center',
   });
 
   slideEnd.addText('www.jasmin-media.com', {
-    x: 0.5, y: 4.8, w: 12.3, h: 0.5,
-    fontSize: 14, color: 'D0E8F5', italic: true,
+    x: 0.5,
+    y: 4.8,
+    w: 12.3,
+    h: 0.5,
+    fontSize: 14,
+    color: 'D0E8F5',
+    italic: true,
     fontFace: 'Inter',
     align: 'center',
   });

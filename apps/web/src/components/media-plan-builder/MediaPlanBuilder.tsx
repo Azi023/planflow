@@ -508,6 +508,18 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
     fetchClients().then(setClients).catch(() => {});
     fetchAudiences().then(setAudiences).catch(() => {});
     fetchCreativeTypes().then(setCreativeTypes).catch(() => {});
+    // Auto-populate preparedBy from logged-in user for new plans
+    if (!props.groupId) {
+      try {
+        const stored = localStorage.getItem('planflow_user');
+        if (stored) {
+          const user = JSON.parse(stored) as { name?: string };
+          if (user.name) {
+            setHeader((h) => ({ ...h, preparedBy: h.preparedBy || user.name! }));
+          }
+        }
+      } catch { /* ignore */ }
+    }
   }, []);
 
   // Load plan group from API when groupId is provided
@@ -716,11 +728,17 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
     low: validRows.reduce((s, r) => s + (r.kpis?.impressions.low ?? 0), 0) || null,
     high: validRows.reduce((s, r) => s + (r.kpis?.impressions.high ?? 0), 0) || null,
   };
-  const cpmRows = validRows.filter((r) => r.kpis?.benchmark?.cpmLow || r.kpis?.benchmark?.cpmHigh);
+  const cpmRows = validRows.filter((r) => {
+    const b = r.kpis?.benchmark;
+    return b && (b.cpmLow != null || b.cpmHigh != null);
+  });
   const avgCpm = cpmRows.length
     ? cpmRows.reduce((s, r) => {
-        const mid = ((r.kpis!.benchmark.cpmLow ?? 0) + (r.kpis!.benchmark.cpmHigh ?? 0)) / 2;
-        return s + Number(mid);
+        const b = r.kpis!.benchmark;
+        const bRec = b as unknown as Record<string, unknown>;
+        const lo = Number(bRec.cpmLow ?? bRec.cpm_low ?? 0);
+        const hi = Number(bRec.cpmHigh ?? bRec.cpm_high ?? 0);
+        return s + (lo + hi) / 2;
       }, 0) / cpmRows.length
     : null;
 
