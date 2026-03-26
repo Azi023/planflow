@@ -498,6 +498,8 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
   const activeIdxRef = useRef(0);
   const calcTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
+  const didInitCalc = useRef(false);
+
   useEffect(() => { planRowsRef.current = variants[activeIdx]?.rows ?? []; }, [variants, activeIdx]);
   useEffect(() => { headerRef.current = header; }, [header]);
   useEffect(() => { activeIdxRef.current = activeIdx; }, [activeIdx]);
@@ -530,6 +532,18 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
       .catch(() => {})
       .finally(() => setInitialLoading(false));
   }, [props.groupId]);
+
+  // After plan loads, re-trigger KPI calculation for rows with budget but no saved kpis
+  useEffect(() => {
+    if (initialLoading || didInitCalc.current) return;
+    if (!props.groupId) return;
+    didInitCalc.current = true;
+    planRowsRef.current.forEach((row) => {
+      if (row.budget && !row.kpis && !row.loading) {
+        calcRow(row.id);
+      }
+    });
+  }, [initialLoading, props.groupId, calcRow]);
 
   const hdr = (patch: Partial<PlanHeader>) => setHeader((h) => ({ ...h, ...patch }));
 

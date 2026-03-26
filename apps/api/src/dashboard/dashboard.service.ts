@@ -110,42 +110,55 @@ export class DashboardService {
       };
     });
 
-    // Client summary
-    const clientBudgetMap = new Map<
+    // Client summary — include ALL clients, even those with 0 plans
+    const [allClients, allProducts] = await Promise.all([
+      this.clientRepo.find({ order: { name: 'ASC' } }),
+      this.productRepo.find(),
+    ]);
+
+    const productCountByClient = new Map<string, number>();
+    for (const p of allProducts) {
+      productCountByClient.set(
+        p.clientId,
+        (productCountByClient.get(p.clientId) ?? 0) + 1,
+      );
+    }
+
+    const clientPlanData = new Map<
       string,
-      {
-        name: string;
-        planCount: number;
-        totalBudget: number;
-        productIds: Set<string>;
-      }
+      { planCount: number; totalBudget: number }
     >();
     for (const group of uniqueGroups) {
       const primary = group[0];
-      if (!primary.clientId || !primary.client) continue;
-      const entry = clientBudgetMap.get(primary.clientId) ?? {
-        name: primary.client.name,
+      if (!primary.clientId) continue;
+      const entry = clientPlanData.get(primary.clientId) ?? {
         planCount: 0,
         totalBudget: 0,
-        productIds: new Set<string>(),
       };
       entry.planCount += 1;
       entry.totalBudget += Number(primary.totalBudget) || 0;
-      if (primary.productId) entry.productIds.add(primary.productId);
-      clientBudgetMap.set(primary.clientId, entry);
+      clientPlanData.set(primary.clientId, entry);
     }
 
-    const clientSummary: ClientSummaryItem[] = Array.from(
-      clientBudgetMap.entries(),
-    )
-      .map(([clientId, data]) => ({
-        clientId,
-        clientName: data.name,
-        planCount: data.planCount,
-        totalBudget: data.totalBudget,
-        productCount: data.productIds.size,
-      }))
-      .sort((a, b) => b.totalBudget - a.totalBudget);
+    const clientSummary: ClientSummaryItem[] = allClients
+      .map((client) => {
+        const planData = clientPlanData.get(client.id) ?? {
+          planCount: 0,
+          totalBudget: 0,
+        };
+        return {
+          clientId: client.id,
+          clientName: client.name,
+          planCount: planData.planCount,
+          totalBudget: planData.totalBudget,
+          productCount: productCountByClient.get(client.id) ?? 0,
+        };
+      })
+      .sort(
+        (a, b) =>
+          b.totalBudget - a.totalBudget ||
+          a.clientName.localeCompare(b.clientName),
+      );
 
     // Platform breakdown from rows
     const rows = await this.rowRepo

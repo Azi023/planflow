@@ -64,7 +64,7 @@ export default function PlansListPage() {
 
   const handleDelete = async (plan: MediaPlan, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm('Delete this plan?')) return;
+    if (!confirm('Are you sure you want to delete this plan?')) return;
     try {
       await deletePlan(plan.id);
       setPlans((ps) => ps.filter((p) => p.variantGroupId !== (plan.variantGroupId ?? plan.id)));
