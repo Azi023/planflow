@@ -113,3 +113,10 @@ export function deletePlan(id: string): Promise<void> {
 export function fetchPlanGroup(groupId: string): Promise<MediaPlan[]> {
   return request<MediaPlan[]>(`/media-plans/group/${groupId}`);
 }
+
+// ─── Dashboard ────────────────────────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function fetchDashboardStats(): Promise<any> {
+  return request('/dashboard/stats');
+}

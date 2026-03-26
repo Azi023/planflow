@@ -1,11 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { fetchDashboardStats } from '@/lib/api';
 import { DashboardStats } from '@/components/dashboard/DashboardStats';
 import { RecentPlans } from '@/components/dashboard/RecentPlans';
 import { ClientOverview } from '@/components/dashboard/ClientOverview';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
 
 interface RecentPlan {
   id: string;
@@ -147,12 +146,8 @@ export default function DashboardPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetch(`${API_BASE}/dashboard/stats`)
-      .then((r) => {
-        if (!r.ok) throw new Error(`${r.status}`);
-        return r.json() as Promise<DashboardData>;
-      })
-      .then(setData)
+    fetchDashboardStats()
+      .then((d: DashboardData) => setData(d))
       .catch(() => setError('Failed to load dashboard data'))
       .finally(() => setLoading(false));
   }, []);
