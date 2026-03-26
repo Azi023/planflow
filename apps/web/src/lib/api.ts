@@ -7,10 +7,22 @@ type PlanPayload = Omit<Partial<MediaPlan>, 'rows'> & { rows?: PlanRowPayload[] 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
-    ...init,
-  });
+  const token =
+    typeof window !== 'undefined' ? localStorage.getItem('planflow_token') : null;
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (init?.headers) {
+    Object.assign(headers, init.headers);
+  }
+  const res = await fetch(`${BASE}${path}`, { ...init, headers });
+  if (res.status === 401) {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('planflow_token');
+      localStorage.removeItem('planflow_user');
+      window.location.href = '/login';
+    }
+    throw new Error('Unauthorized');
+  }
   if (!res.ok) {
     const msg = await res.text().catch(() => res.statusText);
     throw new Error(`API ${path}: ${res.status} — ${msg}`);

@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useAuth } from './auth/AuthProvider';
+import { ROLE_LABELS } from '@/lib/auth';
 
 function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
   const pathname = usePathname();
@@ -24,6 +26,20 @@ function NavLink({ href, children }: { href: string; children: React.ReactNode }
 }
 
 export function NavBar() {
+  const pathname = usePathname();
+  const { user, signOut } = useAuth();
+
+  if (pathname === '/login') return null;
+
+  const initials = user
+    ? user.name
+        .split(' ')
+        .map((w) => w[0])
+        .slice(0, 2)
+        .join('')
+        .toUpperCase()
+    : 'JM';
+
   return (
     <header className="bg-white border-b border-[#E1E3EA] sticky top-0 z-50" style={{ height: 64 }}>
       <div className="max-w-[1600px] mx-auto px-6 h-full flex items-center gap-8">
@@ -42,12 +58,29 @@ export function NavBar() {
           <NavLink href="/benchmarks">Benchmarks</NavLink>
         </nav>
 
-        {/* Right: org + avatar */}
+        {/* Right: user info + sign out */}
         <div className="ml-auto flex items-center gap-3">
-          <span className="text-sm text-[#99A1B7] font-medium hidden sm:block">Jasmin Media</span>
-          <div className="w-8 h-8 rounded-full bg-[#EEF6FF] border border-[#1B84FF]/20 flex items-center justify-center shrink-0">
-            <span className="text-[#1B84FF] text-xs font-semibold">JM</span>
-          </div>
+          {user && (
+            <>
+              <div className="hidden sm:flex flex-col items-end">
+                <span className="text-sm font-medium text-[#071437] leading-tight">
+                  {user.name}
+                </span>
+                <span className="text-xs text-[#99A1B7]">
+                  {ROLE_LABELS[user.role] ?? user.role}
+                </span>
+              </div>
+              <div className="w-8 h-8 rounded-full bg-[#EEF6FF] border border-[#1B84FF]/20 flex items-center justify-center shrink-0">
+                <span className="text-[#1B84FF] text-xs font-semibold">{initials}</span>
+              </div>
+              <button
+                onClick={signOut}
+                className="text-xs font-medium text-[#99A1B7] hover:text-[#F8285A] transition-colors ml-1"
+              >
+                Sign Out
+              </button>
+            </>
+          )}
         </div>
       </div>
     </header>

@@ -7,6 +7,7 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 import { DataSource } from 'typeorm';
+import * as bcrypt from 'bcrypt';
 import { Benchmark } from '../entities/benchmark.entity';
 import { Client } from '../entities/client.entity';
 import { Product } from '../entities/product.entity';
@@ -14,6 +15,7 @@ import { MediaPlan } from '../entities/media-plan.entity';
 import { MediaPlanRow } from '../entities/media-plan-row.entity';
 import { Audience } from '../entities/audience.entity';
 import { CreativeType } from '../entities/creative-type.entity';
+import { User } from '../entities/user.entity';
 
 const ds = new DataSource({
   type: 'postgres',
@@ -30,6 +32,7 @@ const ds = new DataSource({
     MediaPlanRow,
     Audience,
     CreativeType,
+    User,
   ],
   synchronize: true,
 });
@@ -1318,7 +1321,7 @@ async function seed() {
 
   // Clear existing data
   await ds.query(
-    'TRUNCATE TABLE media_plan_rows, media_plans, products, clients, benchmarks, audiences, creative_types RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE media_plan_rows, media_plans, products, clients, benchmarks, audiences, creative_types, users RESTART IDENTITY CASCADE',
   );
 
   // Seed benchmarks
@@ -1436,6 +1439,41 @@ async function seed() {
     ]);
     console.log('Seeded 10 creative types');
   }
+
+  // Seed default users
+  const userRepo = ds.getRepository(User);
+  const defaultUsers = [
+    {
+      email: 'admin@jasminmedia.com',
+      password: 'admin123',
+      name: 'Admin User',
+      role: 'admin',
+    },
+    {
+      email: 'planner@jasminmedia.com',
+      password: 'planner123',
+      name: 'Rimzan Rizve',
+      role: 'planner',
+    },
+    {
+      email: 'am@jasminmedia.com',
+      password: 'am123',
+      name: 'Account Manager',
+      role: 'account_manager',
+    },
+  ];
+  for (const u of defaultUsers) {
+    const passwordHash = await bcrypt.hash(u.password, 10);
+    await userRepo.save(
+      userRepo.create({
+        email: u.email,
+        passwordHash,
+        name: u.name,
+        role: u.role,
+      }),
+    );
+  }
+  console.log('Seeded 3 default users');
 
   await ds.destroy();
   console.log('Done!');

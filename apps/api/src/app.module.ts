@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Benchmark } from './entities/benchmark.entity';
@@ -8,12 +9,15 @@ import { MediaPlan } from './entities/media-plan.entity';
 import { MediaPlanRow } from './entities/media-plan-row.entity';
 import { Audience } from './entities/audience.entity';
 import { CreativeType } from './entities/creative-type.entity';
+import { User } from './entities/user.entity';
 import { BenchmarksModule } from './benchmarks/benchmarks.module';
 import { ClientsModule } from './clients/clients.module';
 import { MediaPlansModule } from './media-plans/media-plans.module';
 import { AudiencesModule } from './audiences/audiences.module';
 import { CreativeTypesModule } from './creative-types/creative-types.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { AuthModule } from './auth/auth.module';
+import { JwtAuthGuard } from './auth/jwt-auth.guard';
 
 @Module({
   imports: [
@@ -35,16 +39,24 @@ import { DashboardModule } from './dashboard/dashboard.module';
           MediaPlanRow,
           Audience,
           CreativeType,
+          User,
         ],
         synchronize: true,
       }),
     }),
+    AuthModule,
     BenchmarksModule,
     ClientsModule,
     MediaPlansModule,
     AudiencesModule,
     CreativeTypesModule,
     DashboardModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
   ],
 })
 export class AppModule {}
