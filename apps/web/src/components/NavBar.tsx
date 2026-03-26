@@ -37,7 +37,8 @@ export function NavBar() {
 
         {/* Nav links */}
         <nav className="flex items-center gap-6 h-full">
-          <NavLink href="/">Media Plans</NavLink>
+          <NavLink href="/dashboard">Dashboard</NavLink>
+          <NavLink href="/media-plans">Media Plans</NavLink>
           <NavLink href="/benchmarks">Benchmarks</NavLink>
         </nav>
 

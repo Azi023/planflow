@@ -13,6 +13,7 @@ import { ClientsModule } from './clients/clients.module';
 import { MediaPlansModule } from './media-plans/media-plans.module';
 import { AudiencesModule } from './audiences/audiences.module';
 import { CreativeTypesModule } from './creative-types/creative-types.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { CreativeTypesModule } from './creative-types/creative-types.module';
     MediaPlansModule,
     AudiencesModule,
     CreativeTypesModule,
+    DashboardModule,
   ],
 })
 export class AppModule {}
