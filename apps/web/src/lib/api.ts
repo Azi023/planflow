@@ -1,4 +1,8 @@
-import type { Audience, Benchmark, CalculatedKpis, Client, CreativeType, MediaPlan, MediaPlanRow } from './types';
+import type {
+  Audience, Benchmark, CalculatedKpis, Client, CreativeType, MediaPlan, MediaPlanRow,
+  AccuracyHeatmap, AccuracyDetail, SeasonalAlert, MonthlyTrendEntry,
+  ConfidenceScore, BenchmarkSuggestion, BenchmarkHistoryEntry,
+} from './types';
 
 // Payload type for create/update — rows use partial fields (no id required)
 type PlanRowPayload = Omit<Partial<MediaPlanRow>, 'id'> & { platform: string };
@@ -391,4 +395,64 @@ export function submitComment(
 
 export function fetchPlanComments(planId: string): Promise<Record<string, unknown>[]> {
   return request<Record<string, unknown>[]>(`/media-plans/${planId}/comments`);
+}
+
+// ─── Analytics (Sprint 3A) ────────────────────────────────────────────────────
+
+export function fetchAccuracyHeatmap(): Promise<AccuracyHeatmap> {
+  return request<AccuracyHeatmap>('/analytics/heatmap');
+}
+
+export function fetchAccuracyDetail(platform: string, objective: string): Promise<AccuracyDetail> {
+  return request<AccuracyDetail>(`/analytics/detail?platform=${encodeURIComponent(platform)}&objective=${encodeURIComponent(objective)}`);
+}
+
+export function fetchSeasonalAlerts(params?: {
+  platform?: string;
+  objective?: string;
+  month?: number;
+}): Promise<SeasonalAlert[]> {
+  const qs = params
+    ? '?' + new URLSearchParams(
+        Object.fromEntries(
+          Object.entries(params)
+            .filter(([, v]) => v != null)
+            .map(([k, v]) => [k, String(v)]),
+        ),
+      ).toString()
+    : '';
+  return request<SeasonalAlert[]>(`/analytics/seasonal${qs}`);
+}
+
+export function fetchMonthlyTrend(platform: string, objective: string): Promise<MonthlyTrendEntry[]> {
+  return request<MonthlyTrendEntry[]>(`/analytics/trend?platform=${encodeURIComponent(platform)}&objective=${encodeURIComponent(objective)}`);
+}
+
+// ─── Benchmark Intelligence (Sprint 3A) ──────────────────────────────────────
+
+export function fetchConfidenceLevels(): Promise<ConfidenceScore[]> {
+  return request<ConfidenceScore[]>('/benchmarks/confidence');
+}
+
+export function fetchBenchmarkSuggestions(benchmarkId?: string): Promise<BenchmarkSuggestion[]> {
+  const qs = benchmarkId ? `?benchmarkId=${benchmarkId}` : '';
+  return request<BenchmarkSuggestion[]>(`/benchmarks/suggestions${qs}`);
+}
+
+export function computeBenchmarkSuggestions(): Promise<{ created: number; skipped: number }> {
+  return request<{ created: number; skipped: number }>('/benchmarks/suggestions/compute', {
+    method: 'POST',
+  });
+}
+
+export function acceptBenchmarkSuggestion(id: string): Promise<void> {
+  return request<void>(`/benchmarks/suggestions/${id}/accept`, { method: 'POST' });
+}
+
+export function rejectBenchmarkSuggestion(id: string): Promise<void> {
+  return request<void>(`/benchmarks/suggestions/${id}/reject`, { method: 'POST' });
+}
+
+export function fetchBenchmarkHistory(benchmarkId: string): Promise<BenchmarkHistoryEntry[]> {
+  return request<BenchmarkHistoryEntry[]>(`/benchmarks/${benchmarkId}/history`);
 }

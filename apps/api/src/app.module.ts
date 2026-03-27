@@ -3,6 +3,8 @@ import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Benchmark } from './entities/benchmark.entity';
+import { BenchmarkHistory } from './entities/benchmark-history.entity';
+import { BenchmarkSuggestion } from './entities/benchmark-suggestion.entity';
 import { Client } from './entities/client.entity';
 import { Product } from './entities/product.entity';
 import { MediaPlan } from './entities/media-plan.entity';
@@ -24,6 +26,7 @@ import { ExportModule } from './export/export.module';
 import { ActualsModule } from './actuals/actuals.module';
 import { TemplatesModule } from './templates/templates.module';
 import { SharingModule } from './sharing/sharing.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { RolesGuard } from './auth/roles.guard';
 
@@ -41,6 +44,8 @@ import { RolesGuard } from './auth/roles.guard';
         password: config.get('DB_PASS', 'planflow_dev'),
         entities: [
           Benchmark,
+          BenchmarkHistory,
+          BenchmarkSuggestion,
           Client,
           Product,
           MediaPlan,
@@ -66,6 +71,7 @@ import { RolesGuard } from './auth/roles.guard';
     ActualsModule,
     TemplatesModule,
     SharingModule,
+    AnalyticsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

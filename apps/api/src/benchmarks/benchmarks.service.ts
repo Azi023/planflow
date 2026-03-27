@@ -2,6 +2,10 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Benchmark } from '../entities/benchmark.entity';
+import { BenchmarkHistory } from '../entities/benchmark-history.entity';
+import { BenchmarkSuggestion } from '../entities/benchmark-suggestion.entity';
+import { CampaignActual } from '../entities/campaign-actual.entity';
+import { MediaPlanRow } from '../entities/media-plan-row.entity';
 import { UpdateBenchmarkDto } from './dto/update-benchmark.dto';
 import { CalculateKpiDto } from './dto/calculate-kpi.dto';
 
@@ -24,11 +28,29 @@ export interface CalculatedKpis {
   ctr: KpiRange;
 }
 
+// Fields that can be auto-tuned (numeric, nullable)
+const TUNABLE_FIELDS: Array<keyof Benchmark> = [
+  'cpmLow',
+  'cpmHigh',
+  'cpcLow',
+  'cpcHigh',
+  'cprLow',
+  'cprHigh',
+];
+
 @Injectable()
 export class BenchmarksService {
   constructor(
     @InjectRepository(Benchmark)
     private readonly benchmarkRepo: Repository<Benchmark>,
+    @InjectRepository(BenchmarkHistory)
+    private readonly historyRepo: Repository<BenchmarkHistory>,
+    @InjectRepository(BenchmarkSuggestion)
+    private readonly suggestionRepo: Repository<BenchmarkSuggestion>,
+    @InjectRepository(CampaignActual)
+    private readonly actualRepo: Repository<CampaignActual>,
+    @InjectRepository(MediaPlanRow)
+    private readonly rowRepo: Repository<MediaPlanRow>,
   ) {}
 
   findAll(audienceType?: string, objective?: string): Promise<Benchmark[]> {
@@ -47,9 +69,15 @@ export class BenchmarksService {
     return row;
   }
 
-  async update(id: string, dto: UpdateBenchmarkDto): Promise<Benchmark> {
-    const row = await this.findOne(id);
-    return this.benchmarkRepo.save({ ...row, ...dto });
+  async update(
+    id: string,
+    dto: UpdateBenchmarkDto,
+    changedBy?: string,
+    source: 'manual' | 'auto_tune' | 'csv_import' = 'manual',
+  ): Promise<Benchmark> {
+    const existing = await this.findOne(id);
+    await this.logHistory(existing, dto, changedBy ?? null, source);
+    return this.benchmarkRepo.save({ ...existing, ...dto });
   }
 
   async calculate(dto: CalculateKpiDto): Promise<CalculatedKpis> {
@@ -135,6 +163,7 @@ export class BenchmarksService {
       };
 
       if (existing) {
+        await this.logHistory(existing, data, null, 'csv_import');
         await this.benchmarkRepo.save({ ...existing, ...data });
         updated++;
       } else {
@@ -146,6 +175,291 @@ export class BenchmarksService {
     return { imported, updated };
   }
 
+  // ─── History ────────────────────────────────────────────────────────────────
+
+  async getHistory(benchmarkId: string): Promise<BenchmarkHistory[]> {
+    return this.historyRepo.find({
+      where: { benchmarkId },
+      order: { changedAt: 'DESC' },
+    });
+  }
+
+  private async logHistory(
+    existing: Benchmark,
+    updates: Partial<Benchmark>,
+    changedBy: string | null,
+    source: string,
+  ): Promise<void> {
+    const records: Partial<BenchmarkHistory>[] = [];
+    for (const [key, newVal] of Object.entries(updates)) {
+      const oldVal = (existing as unknown as Record<string, unknown>)[key];
+      const oldStr = oldVal == null ? null : String(oldVal);
+      const newStr = newVal == null ? null : String(newVal);
+      if (oldStr !== newStr) {
+        records.push({
+          benchmarkId: existing.id,
+          fieldChanged: key,
+          oldValue: oldStr,
+          newValue: newStr,
+          changedBy,
+          source,
+        });
+      }
+    }
+    if (records.length) {
+      await this.historyRepo.save(
+        records.map((r) => this.historyRepo.create(r)),
+      );
+    }
+  }
+
+  // ─── Auto-Tuning Suggestions ────────────────────────────────────────────────
+
+  async getSuggestions(benchmarkId?: string): Promise<BenchmarkSuggestion[]> {
+    const where: Record<string, unknown> = { status: 'pending' };
+    if (benchmarkId) where.benchmarkId = benchmarkId;
+    return this.suggestionRepo.find({
+      where,
+      relations: ['benchmark'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async computeAndSaveSuggestions(): Promise<{
+    created: number;
+    skipped: number;
+  }> {
+    const benchmarks = await this.benchmarkRepo.find();
+    let created = 0;
+    let skipped = 0;
+
+    for (const b of benchmarks) {
+      // Find all plan rows matching this benchmark's platform+objective+audienceType
+      const rows = await this.rowRepo.find({
+        where: {
+          platform: b.platform,
+          objective: b.objective,
+          audienceType: b.audienceType,
+        },
+      });
+      if (!rows.length) continue;
+
+      const rowIds = rows.map((r) => r.id);
+      const actuals = await this.actualRepo
+        .createQueryBuilder('a')
+        .where('a.row_id IN (:...rowIds)', { rowIds })
+        .getMany();
+
+      if (!actuals.length) continue;
+
+      // Compute average actual CPM
+      const cpmActuals = actuals.filter(
+        (a) => a.actualCpm && Number(a.actualCpm) > 0,
+      );
+      if (cpmActuals.length >= 1) {
+        const avgActualCpm =
+          cpmActuals.reduce((s, a) => s + Number(a.actualCpm), 0) /
+          cpmActuals.length;
+
+        // Compare to benchmark range midpoint
+        if (b.cpmLow && b.cpmHigh) {
+          const benchMid = (Number(b.cpmLow) + Number(b.cpmHigh)) / 2;
+          const deviationPct = ((avgActualCpm - benchMid) / benchMid) * 100;
+
+          if (Math.abs(deviationPct) > 15) {
+            // Check if a pending suggestion already exists
+            const existing = await this.suggestionRepo.findOne({
+              where: {
+                benchmarkId: b.id,
+                fieldName: 'cpmMid',
+                status: 'pending',
+              },
+            });
+            if (!existing) {
+              const newLow = avgActualCpm * 0.85;
+              const newHigh = avgActualCpm * 1.15;
+              await this.suggestionRepo.save(
+                this.suggestionRepo.create({
+                  benchmarkId: b.id,
+                  fieldName: 'cpmLow',
+                  currentValue: Number(b.cpmLow),
+                  suggestedValue: Math.round(newLow * 100) / 100,
+                  deviationPct: Math.round(deviationPct * 100) / 100,
+                  sampleCount: cpmActuals.length,
+                  status: 'pending',
+                }),
+              );
+              await this.suggestionRepo.save(
+                this.suggestionRepo.create({
+                  benchmarkId: b.id,
+                  fieldName: 'cpmHigh',
+                  currentValue: Number(b.cpmHigh),
+                  suggestedValue: Math.round(newHigh * 100) / 100,
+                  deviationPct: Math.round(deviationPct * 100) / 100,
+                  sampleCount: cpmActuals.length,
+                  status: 'pending',
+                }),
+              );
+              created += 2;
+            } else {
+              skipped++;
+            }
+          }
+        }
+      }
+
+      // Compute average actual CPC
+      const cpcActuals = actuals.filter(
+        (a) => a.actualCpc && Number(a.actualCpc) > 0,
+      );
+      if (cpcActuals.length >= 1) {
+        const avgActualCpc =
+          cpcActuals.reduce((s, a) => s + Number(a.actualCpc), 0) /
+          cpcActuals.length;
+
+        if (b.cpcLow && b.cpcHigh) {
+          const benchMid = (Number(b.cpcLow) + Number(b.cpcHigh)) / 2;
+          const deviationPct = ((avgActualCpc - benchMid) / benchMid) * 100;
+
+          if (Math.abs(deviationPct) > 15) {
+            const existing = await this.suggestionRepo.findOne({
+              where: {
+                benchmarkId: b.id,
+                fieldName: 'cpcLow',
+                status: 'pending',
+              },
+            });
+            if (!existing) {
+              const newLow = avgActualCpc * 0.85;
+              const newHigh = avgActualCpc * 1.15;
+              await this.suggestionRepo.save(
+                this.suggestionRepo.create({
+                  benchmarkId: b.id,
+                  fieldName: 'cpcLow',
+                  currentValue: Number(b.cpcLow),
+                  suggestedValue: Math.round(newLow * 100) / 100,
+                  deviationPct: Math.round(deviationPct * 100) / 100,
+                  sampleCount: cpcActuals.length,
+                  status: 'pending',
+                }),
+              );
+              await this.suggestionRepo.save(
+                this.suggestionRepo.create({
+                  benchmarkId: b.id,
+                  fieldName: 'cpcHigh',
+                  currentValue: Number(b.cpcHigh),
+                  suggestedValue: Math.round(newHigh * 100) / 100,
+                  deviationPct: Math.round(deviationPct * 100) / 100,
+                  sampleCount: cpcActuals.length,
+                  status: 'pending',
+                }),
+              );
+              created += 2;
+            } else {
+              skipped++;
+            }
+          }
+        }
+      }
+    }
+
+    return { created, skipped };
+  }
+
+  async acceptSuggestion(id: string, changedBy?: string): Promise<void> {
+    const suggestion = await this.suggestionRepo.findOne({
+      where: { id },
+      relations: ['benchmark'],
+    });
+    if (!suggestion) throw new NotFoundException(`Suggestion ${id} not found`);
+    if (suggestion.status !== 'pending') return;
+
+    const field = suggestion.fieldName as keyof Benchmark;
+    await this.update(
+      suggestion.benchmarkId,
+      { [field]: suggestion.suggestedValue } as UpdateBenchmarkDto,
+      changedBy ?? 'auto_tune',
+      'auto_tune',
+    );
+
+    suggestion.status = 'accepted';
+    suggestion.resolvedAt = new Date();
+    await this.suggestionRepo.save(suggestion);
+  }
+
+  async rejectSuggestion(id: string): Promise<void> {
+    const suggestion = await this.suggestionRepo.findOne({ where: { id } });
+    if (!suggestion) throw new NotFoundException(`Suggestion ${id} not found`);
+    suggestion.status = 'rejected';
+    suggestion.resolvedAt = new Date();
+    await this.suggestionRepo.save(suggestion);
+  }
+
+  // ─── Confidence Scores ──────────────────────────────────────────────────────
+
+  async getConfidenceLevels(): Promise<
+    Array<{
+      benchmarkId: string;
+      platform: string;
+      objective: string;
+      audienceType: string;
+      actualsCount: number;
+      level: 'high' | 'medium' | 'low' | 'none';
+    }>
+  > {
+    const benchmarks = await this.benchmarkRepo.find();
+    const results: Array<{
+      benchmarkId: string;
+      platform: string;
+      objective: string;
+      audienceType: string;
+      actualsCount: number;
+      level: 'high' | 'medium' | 'low' | 'none';
+    }> = [];
+
+    for (const b of benchmarks) {
+      const rows = await this.rowRepo.find({
+        where: {
+          platform: b.platform,
+          objective: b.objective,
+          audienceType: b.audienceType,
+        },
+      });
+
+      let actualsCount = 0;
+      if (rows.length) {
+        const rowIds = rows.map((r) => r.id);
+        const count = await this.actualRepo
+          .createQueryBuilder('a')
+          .where('a.row_id IN (:...rowIds)', { rowIds })
+          .getCount();
+        actualsCount = count;
+      }
+
+      const level =
+        actualsCount >= 10
+          ? 'high'
+          : actualsCount >= 3
+            ? 'medium'
+            : actualsCount >= 1
+              ? 'low'
+              : 'none';
+
+      results.push({
+        benchmarkId: b.id,
+        platform: b.platform,
+        objective: b.objective,
+        audienceType: b.audienceType,
+        actualsCount,
+        level,
+      });
+    }
+
+    return results;
+  }
+
+  // ─── KPI Computation ────────────────────────────────────────────────────────
+
   computeKpis(b: Benchmark, budget: number): CalculatedKpis {
     const benchmark = b;
     const n = (v: number | null | string) => (v == null ? null : Number(v));
@@ -156,7 +470,6 @@ export class BenchmarksService {
       high: number | null,
       multiplier = 1,
     ): KpiRange => {
-      // Estimate missing bounds: if only one side exists, derive the other at ±50%
       const effectiveLow = low ?? (high != null ? high / 1.5 : null);
       const effectiveHigh = high ?? (low != null ? low * 1.5 : null);
       return {
@@ -211,3 +524,6 @@ export class BenchmarksService {
     };
   }
 }
+
+// Suppress unused variable warning for TUNABLE_FIELDS
+void TUNABLE_FIELDS;

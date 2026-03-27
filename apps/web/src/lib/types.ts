@@ -174,3 +174,93 @@ export const PLATFORM_LABEL: Record<string, string> = Object.fromEntries(
 export const OBJECTIVE_LABEL: Record<string, string> = Object.fromEntries(
   OBJECTIVES.map((o) => [o.value, o.label]),
 );
+
+// ─── Sprint 3A: Analytics Types ───────────────────────────────────────────────
+
+export type ConfidenceLevel = 'high' | 'medium' | 'low' | 'none';
+
+export interface ConfidenceScore {
+  benchmarkId: string;
+  platform: string;
+  objective: string;
+  audienceType: string;
+  actualsCount: number;
+  level: ConfidenceLevel;
+}
+
+export interface BenchmarkSuggestion {
+  id: string;
+  benchmarkId: string;
+  fieldName: string;
+  currentValue: number | null;
+  suggestedValue: number;
+  deviationPct: number;
+  sampleCount: number;
+  status: 'pending' | 'accepted' | 'rejected';
+  createdAt: string;
+  resolvedAt: string | null;
+  benchmark?: Benchmark;
+}
+
+export interface BenchmarkHistoryEntry {
+  id: string;
+  benchmarkId: string;
+  fieldChanged: string;
+  oldValue: string | null;
+  newValue: string | null;
+  changedBy: string | null;
+  source: 'manual' | 'auto_tune' | 'csv_import';
+  changedAt: string;
+}
+
+export interface HeatmapCell {
+  platform: string;
+  objective: string;
+  score: number;
+  sampleSize: number;
+  trend: 'improving' | 'declining' | 'stable' | null;
+}
+
+export interface AccuracyHeatmap {
+  cells: HeatmapCell[];
+  platforms: string[];
+  objectives: string[];
+}
+
+export interface AccuracyDetail {
+  platform: string;
+  objective: string;
+  benchmarkCpmLow: number | null;
+  benchmarkCpmHigh: number | null;
+  actualAvgCpm: number | null;
+  benchmarkCpcLow: number | null;
+  benchmarkCpcHigh: number | null;
+  actualAvgCpc: number | null;
+  sampleSize: number;
+  cpmDeviationPct: number | null;
+  cpcDeviationPct: number | null;
+  recentEntries: Array<{
+    period: string | null;
+    actualCpm: number | null;
+    actualCpc: number | null;
+    spend: number | null;
+  }>;
+}
+
+export interface SeasonalAlert {
+  platform: string;
+  objective: string;
+  audienceType: string;
+  currentMonthAvg: number | null;
+  annualAvg: number | null;
+  deviationPct: number;
+  direction: 'higher' | 'lower';
+  note: string;
+}
+
+export interface MonthlyTrendEntry {
+  month: number;
+  monthName: string;
+  avgCpm: number | null;
+  count: number;
+}

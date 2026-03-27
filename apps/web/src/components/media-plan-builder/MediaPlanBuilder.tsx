@@ -18,6 +18,8 @@ import {
   enableSharing,
   disableSharing,
   fetchPlanComments,
+  fetchConfidenceLevels,
+  fetchSeasonalAlerts,
 } from '@/lib/api';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -31,6 +33,8 @@ import type {
   MediaPlanRow as ApiMediaPlanRow,
   Objective,
   Product,
+  ConfidenceScore,
+  SeasonalAlert,
 } from '@/lib/types';
 import { OBJECTIVES, PLATFORMS } from '@/lib/types';
 import {
@@ -253,6 +257,8 @@ interface RowProps {
   onToggleNotes: (id: string) => void;
   audiences: Audience[];
   creativeTypes: CreativeType[];
+  confidenceLevel?: 'high' | 'medium' | 'low' | 'none';
+  seasonalAlert?: SeasonalAlert | null;
 }
 
 function PlanRowItem({
@@ -268,6 +274,8 @@ function PlanRowItem({
   onToggleNotes,
   audiences,
   creativeTypes,
+  confidenceLevel,
+  seasonalAlert,
 }: RowProps) {
   const ch = (patch: Partial<PlanRow>) => onChange(row.id, patch);
   const kpi = row.kpis;
@@ -299,6 +307,20 @@ function PlanRowItem({
     if (row.noData) {
       return <span className="text-[#99A1B7] italic text-[10px]">No benchmark data</span>;
     }
+    const confBadge = confidenceLevel && confidenceLevel !== 'none' ? (
+      <span
+        className={`inline-block mt-0.5 text-[9px] font-medium px-1 py-px rounded-full leading-tight ${
+          confidenceLevel === 'high'
+            ? 'bg-[#DCFCE7] text-[#15803D]'
+            : confidenceLevel === 'medium'
+              ? 'bg-[#FEF3C7] text-[#92400E]'
+              : 'bg-[#F1F1F4] text-[#99A1B7]'
+        }`}
+        title={`Confidence: ${confidenceLevel} — based on historical actuals`}
+      >
+        {confidenceLevel === 'high' ? '● High' : confidenceLevel === 'medium' ? '● Med' : '● Low'}
+      </span>
+    ) : null;
     return kpi ? (
       <div>
         <span title={fullRange(kpi.impressions.low, kpi.impressions.high)}>
@@ -312,6 +334,7 @@ function PlanRowItem({
             {row.benchmarkCurrency ?? 'USD'} rate
           </span>
         )}
+        {confBadge}
       </div>
     ) : '—';
   };
@@ -560,6 +583,19 @@ function PlanRowItem({
         </td>
       </tr>
 
+      {/* Seasonal alert row */}
+      {seasonalAlert && (
+        <tr className="bg-[#FFF7ED] border-b border-[#F97316]/20">
+          <td colSpan={2} />
+          <td colSpan={18} className="px-3 py-1.5">
+            <span className="text-[10px] text-[#C2410C] font-medium">
+              ⚡ {seasonalAlert.note}
+            </span>
+          </td>
+          <td />
+        </tr>
+      )}
+
       {/* Inline notes row */}
       {showNotes && (
         <tr className="bg-[#FFFDF5] border-b border-[#F6B100]/20">
@@ -792,6 +828,10 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
   const [sharingLoading, setSharingLoading] = useState(false);
   const [unreadComments, setUnreadComments] = useState(0);
 
+  // Sprint 3A: Benchmark intelligence
+  const [confidenceMap, setConfidenceMap] = useState<Map<string, ConfidenceScore>>(new Map());
+  const [seasonalAlerts, setSeasonalAlerts] = useState<SeasonalAlert[]>([]);
+
   // Stable refs — avoids stale closures in async callbacks
   const planRowsRef = useRef<PlanRow[]>(variants[0].rows);
   const headerRef = useRef<PlanHeader>(defaultHeader());
@@ -808,6 +848,23 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
     fetchClients().then(setClients).catch(() => {});
     fetchAudiences().then(setAudiences).catch(() => {});
     fetchCreativeTypes().then(setCreativeTypes).catch(() => {});
+    // Load confidence levels and seasonal alerts
+    fetchConfidenceLevels()
+      .then((levels) => {
+        const map = new Map<string, ConfidenceScore>();
+        for (const l of levels) {
+          const key = `${l.platform}|${l.objective}|${l.audienceType}`;
+          if (!map.has(key) || l.actualsCount > (map.get(key)?.actualsCount ?? 0)) {
+            map.set(key, l);
+          }
+        }
+        setConfidenceMap(map);
+      })
+      .catch(() => {});
+    const currentMonth = new Date().getMonth() + 1;
+    fetchSeasonalAlerts({ month: currentMonth })
+      .then(setSeasonalAlerts)
+      .catch(() => {});
     // Auto-populate preparedBy from logged-in user for new plans
     if (!props.groupId) {
       try {
@@ -1792,6 +1849,10 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
                     onToggleNotes={handleToggleNotes}
                     audiences={audiences}
                     creativeTypes={creativeTypes}
+                    confidenceLevel={confidenceMap.get(`${row.platform}|${row.objective}|${row.audienceType}`)?.level}
+                    seasonalAlert={seasonalAlerts.find(
+                      (a) => a.platform === row.platform && a.objective === row.objective,
+                    ) ?? null}
                   />
                 ))}
               </tbody>

@@ -56,6 +56,7 @@ export function NavBar() {
           <NavLink href="/dashboard">Dashboard</NavLink>
           <NavLink href="/media-plans">Media Plans</NavLink>
           <NavLink href="/templates">Templates</NavLink>
+          <NavLink href="/analytics">Analytics</NavLink>
           <NavLink href="/benchmarks">Benchmarks</NavLink>
         </nav>
 

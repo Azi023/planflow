@@ -1,8 +1,18 @@
 'use client';
 
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
-import { fetchBenchmarks, updateBenchmark, importBenchmarksCsv } from '@/lib/api';
-import type { AudienceType, Benchmark, Objective } from '@/lib/types';
+import {
+  fetchBenchmarks,
+  updateBenchmark,
+  importBenchmarksCsv,
+  fetchConfidenceLevels,
+  fetchBenchmarkSuggestions,
+  fetchBenchmarkHistory,
+} from '@/lib/api';
+import type {
+  AudienceType, Benchmark, Objective,
+  ConfidenceScore, BenchmarkSuggestion, BenchmarkHistoryEntry,
+} from '@/lib/types';
 import { OBJECTIVE_LABEL, PLATFORM_LABEL } from '@/lib/types';
 import { fmtBenchmarkRange, fmtCost } from '@/lib/format';
 import { Toast } from '@/components/Toast';
@@ -37,6 +47,152 @@ const USD_PLATFORMS = new Set([
   'gdn', 'youtube_video', 'youtube_bumper', 'search', 'demand_gen', 'perf_max',
 ]);
 
+// ─── Confidence Badge ────────────────────────────────────────────────────────
+
+function ConfidenceBadge({ level, count }: { level: string; count: number }) {
+  if (level === 'high') {
+    return (
+      <span
+        title={`High confidence (${count} actuals)`}
+        className="ml-1.5 inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-green-100 text-green-700 border border-green-200"
+      >
+        ● High
+      </span>
+    );
+  }
+  if (level === 'medium') {
+    return (
+      <span
+        title={`Medium confidence (${count} actuals)`}
+        className="ml-1.5 inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200"
+      >
+        ◑ Med
+      </span>
+    );
+  }
+  if (level === 'low') {
+    return (
+      <span
+        title={`Low confidence (${count} actuals)`}
+        className="ml-1.5 inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-gray-50 text-gray-500 border border-gray-200"
+      >
+        ○ Low
+      </span>
+    );
+  }
+  return null;
+}
+
+// ─── History Panel ─────────────────────────────────────────────────────────────
+
+function HistoryPanel({
+  benchmark,
+  onClose,
+}: {
+  benchmark: Benchmark;
+  onClose: () => void;
+}) {
+  const [history, setHistory] = useState<BenchmarkHistoryEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchBenchmarkHistory(benchmark.id)
+      .then(setHistory)
+      .catch(() => null)
+      .finally(() => setLoading(false));
+  }, [benchmark.id]);
+
+  const sourceLabel: Record<string, string> = {
+    manual: 'Manual edit',
+    auto_tune: 'Auto-tune',
+    csv_import: 'CSV import',
+  };
+
+  const sourceBadge = (source: string) => {
+    const cls =
+      source === 'auto_tune'
+        ? 'bg-amber-50 text-amber-700 border-amber-200'
+        : source === 'csv_import'
+        ? 'bg-blue-50 text-blue-700 border-blue-200'
+        : 'bg-gray-50 text-gray-600 border-gray-200';
+    return (
+      <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded border ${cls}`}>
+        {sourceLabel[source] ?? source}
+      </span>
+    );
+  };
+
+  const fieldLabel: Record<string, string> = {
+    cpmLow: 'CPM Low', cpmHigh: 'CPM High',
+    cpcLow: 'CPC Low', cpcHigh: 'CPC High',
+    cprLow: 'CPR Low', cprHigh: 'CPR High',
+    cpeLow: 'CPE Low', cpeHigh: 'CPE High',
+    ctrLow: 'CTR Low', ctrHigh: 'CTR High',
+    cplLow: 'CPL Low', cplHigh: 'CPL High',
+    cplvLow: 'CPLV Low', cplvHigh: 'CPLV High',
+    cpv2sLow: 'CPV 2s Low', cpv2sHigh: 'CPV 2s High',
+    cpvTvLow: 'CPV TV Low', cpvTvHigh: 'CPV TV High',
+    pageLikeLow: 'Per Like Low', pageLikeHigh: 'Per Like High',
+    frequency: 'Frequency',
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-end">
+      <div className="bg-white h-full w-full max-w-md overflow-y-auto shadow-2xl flex flex-col">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#E1E3EA] bg-[#F8F9FF] sticky top-0">
+          <div>
+            <h2 className="font-semibold text-[#071437] text-sm">
+              {PLATFORM_LABEL[benchmark.platform] ?? benchmark.platform}
+            </h2>
+            <p className="text-xs text-[#99A1B7] mt-0.5">
+              {OBJECTIVE_LABEL[benchmark.objective] ?? benchmark.objective} · Edit history
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-[#99A1B7] hover:text-[#071437] transition-colors text-xl leading-none"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="flex-1 p-5">
+          {loading ? (
+            <div className="flex items-center justify-center h-32 text-[#99A1B7] text-sm">Loading…</div>
+          ) : history.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-32 text-center">
+              <p className="text-[#99A1B7] text-sm">No edit history yet.</p>
+              <p className="text-[#CBD5E1] text-xs mt-1">Changes will appear here after the first edit.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {history.map((h) => (
+                <div key={h.id} className="border border-[#E1E3EA] rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs font-semibold text-[#071437]">
+                      {fieldLabel[h.fieldChanged] ?? h.fieldChanged}
+                    </span>
+                    {sourceBadge(h.source)}
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-[#99A1B7] line-through">{h.oldValue ?? '—'}</span>
+                    <span className="text-[#CBD5E1]">→</span>
+                    <span className="font-medium text-[#1B84FF]">{h.newValue ?? '—'}</span>
+                  </div>
+                  <div className="flex items-center justify-between mt-2 text-[10px] text-[#99A1B7]">
+                    <span>{h.changedBy ?? 'System'}</span>
+                    <span>{new Date(h.changedAt).toLocaleString()}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── EditRangeCell ─────────────────────────────────────────────────────────────
 
 interface EditRangeCellProps {
@@ -55,7 +211,6 @@ function EditRangeCell({ loVal, hiVal, decimals, isCtr = false, editable = true,
   const loRef = useRef<HTMLInputElement>(null);
 
   const startEdit = () => {
-    // Edit in raw form — user edits the fraction, not the percentage
     setDraftLo(fmtCost(loVal, 6));
     setDraftHi(fmtCost(hiVal, 6));
     setEditing(true);
@@ -181,11 +336,34 @@ export default function BenchmarkTable() {
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Sprint 3A state
+  const [confidenceMap, setConfidenceMap] = useState<Map<string, ConfidenceScore>>(new Map());
+  const [suggestionsMap, setSuggestionsMap] = useState<Map<string, BenchmarkSuggestion[]>>(new Map());
+  const [historyBenchmark, setHistoryBenchmark] = useState<Benchmark | null>(null);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await fetchBenchmarks({ audienceType });
+      const [data, confidence, suggestions] = await Promise.all([
+        fetchBenchmarks({ audienceType }),
+        fetchConfidenceLevels().catch(() => []),
+        fetchBenchmarkSuggestions().catch(() => [] as BenchmarkSuggestion[]),
+      ]);
       setRows(data);
+
+      // Build confidence lookup by benchmarkId
+      const cMap = new Map<string, ConfidenceScore>();
+      for (const c of confidence) cMap.set(c.benchmarkId, c);
+      setConfidenceMap(cMap);
+
+      // Build suggestions lookup by benchmarkId
+      const sMap = new Map<string, BenchmarkSuggestion[]>();
+      for (const s of suggestions) {
+        const list = sMap.get(s.benchmarkId) ?? [];
+        list.push(s);
+        sMap.set(s.benchmarkId, list);
+      }
+      setSuggestionsMap(sMap);
     } finally {
       setLoading(false);
     }
@@ -298,6 +476,14 @@ export default function BenchmarkTable() {
       {toast && (
         <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
       )}
+
+      {historyBenchmark && (
+        <HistoryPanel
+          benchmark={historyBenchmark}
+          onClose={() => setHistoryBenchmark(null)}
+        />
+      )}
+
       {/* Hidden file input for CSV import */}
       <input
         ref={fileInputRef}
@@ -313,11 +499,27 @@ export default function BenchmarkTable() {
           <h2 className="text-base font-semibold text-[#071437]">KPI Benchmarks</h2>
           <p className="text-xs text-[#99A1B7] mt-0.5">
             {isAdmin
-              ? 'Double-click any value to edit · CTR shown as % · CPV/CPM/CPC in platform currency'
-              : 'Read-only · CTR shown as % · CPV/CPM/CPC in platform currency'}
+              ? 'Double-click any value to edit · Click platform name for history'
+              : 'Read-only · Click platform name for edit history'}
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {/* Confidence legend */}
+          <div className="hidden lg:flex gap-3 text-xs text-[#99A1B7] border-r border-[#E1E3EA] pr-3">
+            <span className="flex items-center gap-1">
+              <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1 py-0.5 rounded bg-green-100 text-green-700 border border-green-200">● High</span>
+              ≥10
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">◑ Med</span>
+              3–9
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1 py-0.5 rounded bg-gray-50 text-gray-500 border border-gray-200">○ Low</span>
+              1–2
+            </span>
+          </div>
+
           <div className="flex gap-3 text-xs text-[#99A1B7]">
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-[#EEF6FF] border border-[#1B84FF]/40" />LKR
@@ -326,6 +528,7 @@ export default function BenchmarkTable() {
               <span className="w-2 h-2 rounded-full bg-[#FFF8DD] border border-[#F6B100]/40" />USD
             </span>
           </div>
+
           {isAdmin && (
             <div className="flex items-center gap-2">
               <button
@@ -343,6 +546,7 @@ export default function BenchmarkTable() {
               </button>
             </div>
           )}
+
           {/* Pill toggle */}
           <div className="flex rounded-lg border border-[#E1E3EA] overflow-hidden bg-[#F9F9F9]">
             {(['mass', 'niche'] as const).map((t) => (
@@ -372,7 +576,7 @@ export default function BenchmarkTable() {
           <table className="w-full text-xs border-collapse">
             <thead>
               <tr className="bg-[#F9F9F9] border-b border-[#E1E3EA]">
-                <th className="px-3 py-2.5 text-left text-[10px] font-semibold text-[#99A1B7] uppercase tracking-wider w-36 sticky left-0 bg-[#F9F9F9] border-r border-[#E1E3EA]">
+                <th className="px-3 py-2.5 text-left text-[10px] font-semibold text-[#99A1B7] uppercase tracking-wider w-48 sticky left-0 bg-[#F9F9F9] border-r border-[#E1E3EA]">
                   Platform
                 </th>
                 <th className="px-3 py-2.5 text-left text-[10px] font-semibold text-[#99A1B7] uppercase tracking-wider w-28">Min Duration</th>
@@ -410,21 +614,47 @@ export default function BenchmarkTable() {
                   {items.map((row) => {
                     const isUsd = USD_PLATFORMS.has(row.platform) || row.currency === 'USD';
                     const rowBg = isUsd ? '#FFFBF0' : '#FFFFFF';
+                    const confidence = confidenceMap.get(row.id);
+                    const pendingSuggestions = suggestionsMap.get(row.id) ?? [];
+                    const hasSuggestion = pendingSuggestions.length > 0;
+
                     return (
                       <tr
                         key={row.id}
                         className={`border-b border-[#F1F1F4] transition-colors ${
                           saving === row.id ? 'opacity-60' : ''
-                        }`}
+                        } ${hasSuggestion ? 'ring-1 ring-inset ring-amber-200' : ''}`}
                         style={{ backgroundColor: rowBg }}
                         onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = isUsd ? '#FFF3CC' : '#F9F9F9')}
                         onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = rowBg)}
                       >
-                        <td className="px-3 py-1.5 font-medium text-[#071437] sticky left-0 border-r border-[#F1F1F4] whitespace-nowrap" style={{ backgroundColor: rowBg }}>
-                          {PLATFORM_LABEL[row.platform] ?? row.platform}
-                          {saving === row.id && (
-                            <span className="ml-1 text-[#1B84FF] text-[10px]">↻</span>
-                          )}
+                        <td
+                          className="px-3 py-1.5 font-medium text-[#071437] sticky left-0 border-r border-[#F1F1F4] whitespace-nowrap"
+                          style={{ backgroundColor: rowBg }}
+                        >
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <button
+                              onClick={() => setHistoryBenchmark(row)}
+                              className="text-left hover:text-[#1B84FF] transition-colors"
+                              title="Click to view edit history"
+                            >
+                              {PLATFORM_LABEL[row.platform] ?? row.platform}
+                            </button>
+                            {saving === row.id && (
+                              <span className="text-[#1B84FF] text-[10px]">↻</span>
+                            )}
+                            {confidence && confidence.level !== 'none' && (
+                              <ConfidenceBadge level={confidence.level} count={confidence.actualsCount} />
+                            )}
+                            {hasSuggestion && (
+                              <span
+                                className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-300 cursor-pointer"
+                                title={`${pendingSuggestions.length} suggested update${pendingSuggestions.length > 1 ? 's' : ''} — go to Analytics to review`}
+                              >
+                                ⚡ Suggested Update
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-3 py-1.5 text-[#4B5675] whitespace-nowrap">
                           {row.minDuration ?? '—'}
