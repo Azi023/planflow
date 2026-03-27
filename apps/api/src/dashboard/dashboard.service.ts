@@ -245,7 +245,7 @@ export class DashboardService {
       recentPlans,
       clientSummary,
       platformBreakdown,
-      campaignDelivery,
+      campaignDelivery: campaignDelivery.slice(0, 15),
     };
   }
 }

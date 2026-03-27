@@ -369,38 +369,41 @@ function PlanRowItem({
         </td>
 
         <td className="px-2 py-1">
-          <select
+          <input
+            list={`audience-list-${row.id}`}
             value={row.audienceName}
             onChange={(e) => {
               const selected = audiences.find((a) => a.name === e.target.value);
               ch({
                 audienceName: e.target.value,
-                audienceSize: selected
-                  ? [selected.estimatedSizeMin, selected.estimatedSizeMax].filter(Boolean).join('-')
-                  : row.audienceSize,
-                audienceType:
-                  selected?.audienceType === 'mass' || selected?.audienceType === 'niche'
-                    ? (selected.audienceType as AudienceType)
-                    : row.audienceType,
-                targetingCriteria: selected
-                  ? [selected.interests, selected.behaviors, selected.demographics]
-                      .filter(Boolean)
-                      .join('; ')
-                  : row.targetingCriteria,
+                ...(selected
+                  ? {
+                      audienceSize: [selected.estimatedSizeMin, selected.estimatedSizeMax]
+                        .filter(Boolean)
+                        .join('-'),
+                      audienceType:
+                        selected.audienceType === 'mass' || selected.audienceType === 'niche'
+                          ? (selected.audienceType as AudienceType)
+                          : row.audienceType,
+                      targetingCriteria: [
+                        selected.interests,
+                        selected.behaviors,
+                        selected.demographics,
+                      ]
+                        .filter(Boolean)
+                        .join('; '),
+                    }
+                  : {}),
               });
             }}
-            className="w-full border-0 bg-transparent text-xs focus:outline-none"
-          >
-            <option value="">— Select or type —</option>
+            placeholder="Type or select..."
+            className="w-full border-0 bg-transparent text-xs focus:outline-none placeholder:text-[#C9CDDA]"
+          />
+          <datalist id={`audience-list-${row.id}`}>
             {audiences.map((a) => (
-              <option key={a.id} value={a.name}>
-                {a.name}
-                {a.estimatedSizeMin
-                  ? ` (${a.estimatedSizeMin}${a.estimatedSizeMax ? '-' + a.estimatedSizeMax : ''})`
-                  : ''}
-              </option>
+              <option key={a.id} value={a.name} />
             ))}
-          </select>
+          </datalist>
         </td>
 
         <td className="px-2 py-1">

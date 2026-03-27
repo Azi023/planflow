@@ -7,6 +7,16 @@ import type { MediaPlan } from '@/lib/types';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useAuth } from '@/components/auth/AuthProvider';
 
+const PLANS_PER_PAGE = 20;
+
+const STATUS_OPTIONS = [
+  { value: 'all', label: 'All Status' },
+  { value: 'draft', label: 'Draft' },
+  { value: 'pending_review', label: 'Pending Review' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'sent', label: 'Sent to Client' },
+];
+
 function SkeletonRow() {
   return (
     <tr className="border-b border-[#F1F1F4]">
@@ -26,6 +36,9 @@ export default function PlansListPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
   const isAdmin = user?.role === 'admin';
 
   useEffect(() => {
@@ -43,6 +56,34 @@ export default function PlansListPage() {
       return acc;
     }, {})
   ).sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime());
+
+  // Filter
+  const filteredGroups = groups.filter((p) => {
+    const q = searchQuery.toLowerCase();
+    const matchesSearch =
+      !q ||
+      (p.campaignName?.toLowerCase().includes(q)) ||
+      (p.client?.name?.toLowerCase().includes(q)) ||
+      (p.referenceNumber?.toLowerCase().includes(q));
+    const matchesStatus = statusFilter === 'all' || p.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const totalPages = Math.ceil(filteredGroups.length / PLANS_PER_PAGE);
+  const paginatedGroups = filteredGroups.slice(
+    (currentPage - 1) * PLANS_PER_PAGE,
+    currentPage * PLANS_PER_PAGE,
+  );
+
+  const handleSearchChange = (q: string) => {
+    setSearchQuery(q);
+    setCurrentPage(1);
+  };
+
+  const handleStatusChange = (s: string) => {
+    setStatusFilter(s);
+    setCurrentPage(1);
+  };
 
   const handleDuplicate = async (plan: MediaPlan, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -67,6 +108,15 @@ export default function PlansListPage() {
     } catch {
       alert('Failed to delete');
     }
+  };
+
+  // Page number buttons helper
+  const getPageNumbers = (): number[] => {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    if (currentPage <= 4) return [1, 2, 3, 4, 5, 6, 7];
+    if (currentPage >= totalPages - 3)
+      return Array.from({ length: 7 }, (_, i) => totalPages - 6 + i);
+    return Array.from({ length: 7 }, (_, i) => currentPage - 3 + i);
   };
 
   return (
@@ -95,11 +145,31 @@ export default function PlansListPage() {
 
       {/* Table card */}
       <div className="bg-white rounded-[8px] border border-[#E1E3EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
-        {/* Table header */}
-        <div className="px-6 py-4 border-b border-[#F1F1F4] flex items-center justify-between">
-          <p className="text-sm font-semibold text-[#071437]">
-            {loading ? 'Loading…' : `${groups.length} plan${groups.length !== 1 ? 's' : ''}`}
-          </p>
+        {/* Table header with search/filter */}
+        <div className="px-6 py-4 border-b border-[#F1F1F4]">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                placeholder="Search campaigns, clients, ref #..."
+                className="w-72 border border-[#E1E3EA] rounded-[6px] px-3 py-2 text-sm focus:outline-none focus:border-[#1B84FF] transition-colors"
+              />
+              <select
+                value={statusFilter}
+                onChange={(e) => handleStatusChange(e.target.value)}
+                className="border border-[#E1E3EA] rounded-[6px] px-3 py-2 text-sm text-[#4B5675] focus:outline-none focus:border-[#1B84FF] transition-colors"
+              >
+                {STATUS_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+            <span className="text-sm text-[#99A1B7]">
+              {loading ? 'Loading…' : `${filteredGroups.length} plan${filteredGroups.length !== 1 ? 's' : ''}`}
+            </span>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -127,27 +197,41 @@ export default function PlansListPage() {
                 </>
               )}
 
-              {!loading && groups.length === 0 && (
+              {!loading && filteredGroups.length === 0 && (
                 <tr>
                   <td colSpan={8} className="px-4 py-16 text-center">
                     <div className="flex flex-col items-center gap-3">
                       <div className="w-12 h-12 rounded-xl bg-[#F9F9F9] border border-[#E1E3EA] flex items-center justify-center text-xl">
                         📋
                       </div>
-                      <p className="text-sm font-medium text-[#4B5675]">No media plans yet</p>
-                      <p className="text-xs text-[#99A1B7]">Create your first plan to get started</p>
-                      <button
-                        onClick={() => router.push('/media-plans/new')}
-                        className="mt-1 bg-[#1B84FF] text-white rounded-lg px-5 py-2 text-sm font-medium hover:bg-[#056EE9] transition-colors"
-                      >
-                        Create first plan
-                      </button>
+                      {groups.length > 0 ? (
+                        <>
+                          <p className="text-sm font-medium text-[#4B5675]">No plans match your filters</p>
+                          <button
+                            onClick={() => { setSearchQuery(''); setStatusFilter('all'); }}
+                            className="text-[#1B84FF] text-sm hover:underline"
+                          >
+                            Clear filters
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-sm font-medium text-[#4B5675]">No media plans yet</p>
+                          <p className="text-xs text-[#99A1B7]">Create your first plan to get started</p>
+                          <button
+                            onClick={() => router.push('/media-plans/new')}
+                            className="mt-1 bg-[#1B84FF] text-white rounded-lg px-5 py-2 text-sm font-medium hover:bg-[#056EE9] transition-colors"
+                          >
+                            Create first plan
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>
               )}
 
-              {!loading && groups.map((plan) => (
+              {!loading && paginatedGroups.map((plan) => (
                 <tr
                   key={plan.variantGroupId ?? plan.id}
                   onClick={() => router.push(`/media-plans/${plan.variantGroupId ?? plan.id}`)}
@@ -206,6 +290,44 @@ export default function PlansListPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        {!loading && totalPages > 1 && (
+          <div className="flex items-center justify-between px-6 py-3 border-t border-[#F1F1F4]">
+            <span className="text-sm text-[#99A1B7]">
+              Showing {((currentPage - 1) * PLANS_PER_PAGE) + 1}–{Math.min(currentPage * PLANS_PER_PAGE, filteredGroups.length)} of {filteredGroups.length}
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 text-sm border border-[#E1E3EA] rounded-md disabled:opacity-40 hover:bg-[#F9F9F9] transition-colors"
+              >
+                ← Prev
+              </button>
+              {getPageNumbers().map((page) => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                    page === currentPage
+                      ? 'bg-[#1B84FF] text-white'
+                      : 'border border-[#E1E3EA] hover:bg-[#F9F9F9]'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 text-sm border border-[#E1E3EA] rounded-md disabled:opacity-40 hover:bg-[#F9F9F9] transition-colors"
+              >
+                Next →
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );
