@@ -155,6 +155,8 @@ export const PLATFORMS = [
   { value: 'search', label: 'Search' },
   { value: 'demand_gen', label: 'Demand Gen' },
   { value: 'perf_max', label: 'Performance Max' },
+  { value: 'tiktok', label: 'TikTok' },
+  { value: 'linkedin', label: 'LinkedIn' },
 ] as const;
 
 export const OBJECTIVES = [
