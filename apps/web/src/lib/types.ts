@@ -113,6 +113,7 @@ export interface MediaPlanRow {
   percentage: number | null;
   platformRangeCpm: string | null;
   platformRangeCpl: string | null;
+  notes: string | null;
 }
 
 export interface MediaPlan {

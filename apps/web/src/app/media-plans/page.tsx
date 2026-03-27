@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { fetchPlans, deletePlan } from '@/lib/api';
+import { fetchPlans, deletePlan, duplicatePlan } from '@/lib/api';
 import type { MediaPlan } from '@/lib/types';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useAuth } from '@/components/auth/AuthProvider';
@@ -25,6 +25,7 @@ export default function PlansListPage() {
   const [plans, setPlans] = useState<MediaPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
   const isAdmin = user?.role === 'admin';
 
   useEffect(() => {
@@ -42,6 +43,20 @@ export default function PlansListPage() {
       return acc;
     }, {})
   ).sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime());
+
+  const handleDuplicate = async (plan: MediaPlan, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDuplicatingId(plan.id);
+    try {
+      const result = await duplicatePlan(plan.id);
+      const newGroupId = result.variantGroupId ?? result.id;
+      router.push(`/media-plans/${newGroupId}`);
+    } catch {
+      alert('Failed to duplicate plan');
+    } finally {
+      setDuplicatingId(null);
+    }
+  };
 
   const handleDelete = async (plan: MediaPlan, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -164,6 +179,14 @@ export default function PlansListPage() {
                         className="text-[#1B84FF] hover:text-[#056EE9] text-xs font-medium transition-colors"
                       >
                         Edit
+                      </button>
+                      <span className="text-[#E1E3EA]">·</span>
+                      <button
+                        onClick={(e) => handleDuplicate(plan, e)}
+                        disabled={duplicatingId === plan.id}
+                        className="text-[#7239EA] hover:text-[#5A2DB5] text-xs font-medium transition-colors disabled:opacity-60"
+                      >
+                        {duplicatingId === plan.id ? 'Copying…' : 'Duplicate'}
                       </button>
                       {isAdmin && (
                         <>

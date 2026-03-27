@@ -132,4 +132,7 @@ export class MediaPlanRow {
     nullable: true,
   })
   platformRangeCpl: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  notes: string | null;
 }

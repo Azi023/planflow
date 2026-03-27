@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   calculateKpis,
-  createAudience,
   fetchAudiences,
   fetchClients,
   fetchCreativeTypes,
@@ -14,6 +13,8 @@ import {
   exportPlanExcel,
   exportPlanPptx,
   updatePlanStatus,
+  duplicatePlan,
+  createTemplateFromPlan,
 } from '@/lib/api';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -67,6 +68,7 @@ interface PlanRow {
   country: string;
   buyType: string;
   budget: string;
+  notes: string;
   kpis: CalculatedKpis | null;
   loading: boolean;
   noData: boolean;
@@ -117,6 +119,7 @@ function emptyRow(): PlanRow {
     country: '',
     buyType: '',
     budget: '',
+    notes: '',
     kpis: null,
     loading: false,
     noData: false,
@@ -176,6 +179,7 @@ function apiRowToLocalRow(apiRow: ApiMediaPlanRow): PlanRow {
     country: apiRow.country ?? '',
     buyType: apiRow.buyType ?? '',
     budget: apiRow.budget != null ? String(apiRow.budget) : '',
+    notes: apiRow.notes ?? '',
     kpis:
       apiRow.projectedKpis && Object.keys(apiRow.projectedKpis).length > 0
         ? (apiRow.projectedKpis as unknown as CalculatedKpis)
@@ -206,8 +210,12 @@ interface RowProps {
   idx: number;
   currency: string;
   totalMediaSpend: number;
+  selected: boolean;
+  showNotes: boolean;
   onChange: (id: string, patch: Partial<PlanRow>) => void;
   onRemove: (id: string) => void;
+  onToggleSelect: (id: string, checked: boolean) => void;
+  onToggleNotes: (id: string) => void;
   audiences: Audience[];
   creativeTypes: CreativeType[];
 }
@@ -217,8 +225,12 @@ function PlanRowItem({
   idx,
   currency,
   totalMediaSpend,
+  selected,
+  showNotes,
   onChange,
   onRemove,
+  onToggleSelect,
+  onToggleNotes,
   audiences,
   creativeTypes,
 }: RowProps) {
@@ -272,228 +284,385 @@ function PlanRowItem({
 
   const rowClass = row.currencyMismatch
     ? 'border-b border-[#F6B100]/20 bg-[#FFF8DD] text-xs'
-    : 'border-b border-[#F1F1F4] hover:bg-[#F9F9F9] text-xs transition-colors';
+    : selected
+      ? 'border-b border-[#1B84FF]/20 bg-[#EEF6FF] text-xs'
+      : 'border-b border-[#F1F1F4] hover:bg-[#F9F9F9] text-xs transition-colors';
 
   return (
-    <tr className={rowClass}>
-      <td className="px-2 py-2 text-[#99A1B7] text-center sticky left-0 bg-inherit">{idx + 1}</td>
+    <>
+      <tr className={rowClass}>
+        {/* Checkbox */}
+        <td className="px-2 py-2 text-center sticky left-0 bg-inherit">
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={(e) => onToggleSelect(row.id, e.target.checked)}
+            className="rounded border-[#E1E3EA] cursor-pointer"
+          />
+        </td>
 
-      <td className="px-2 py-1">
-        <select
-          value={row.platform}
-          onChange={(e) => ch({ platform: e.target.value, kpis: null, noData: false, currencyMismatch: false })}
-          className="w-full border-0 bg-transparent text-xs focus:outline-none"
-        >
-          {PLATFORMS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
-        </select>
-      </td>
+        <td className="px-2 py-2 text-[#99A1B7] text-center">{idx + 1}</td>
 
-      <td className="px-2 py-1">
-        <select
-          value={row.objective}
-          onChange={(e) => ch({ objective: e.target.value as Objective, kpis: null, noData: false, currencyMismatch: false })}
-          className="w-full border-0 bg-transparent text-xs focus:outline-none"
-        >
-          {OBJECTIVES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-      </td>
+        <td className="px-2 py-1">
+          <select
+            value={row.platform}
+            onChange={(e) => ch({ platform: e.target.value, kpis: null, noData: false, currencyMismatch: false })}
+            className="w-full border-0 bg-transparent text-xs focus:outline-none"
+          >
+            {PLATFORMS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+          </select>
+        </td>
 
-      <td className="px-2 py-1">
-        <select
-          value={row.audienceType}
-          onChange={(e) => ch({ audienceType: e.target.value as AudienceType, kpis: null, noData: false, currencyMismatch: false })}
-          className="w-full border-0 bg-transparent text-xs focus:outline-none"
-        >
-          <option value="mass">Mass</option>
-          <option value="niche">Niche</option>
-        </select>
-      </td>
+        <td className="px-2 py-1">
+          <select
+            value={row.objective}
+            onChange={(e) => ch({ objective: e.target.value as Objective, kpis: null, noData: false, currencyMismatch: false })}
+            className="w-full border-0 bg-transparent text-xs focus:outline-none"
+          >
+            {OBJECTIVES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </td>
 
-      <td className="px-2 py-1">
-        <select
-          value={row.audienceName}
-          onChange={(e) => {
-            const selected = audiences.find((a) => a.name === e.target.value);
-            ch({
-              audienceName: e.target.value,
-              audienceSize: selected
-                ? [selected.estimatedSizeMin, selected.estimatedSizeMax].filter(Boolean).join('-')
-                : row.audienceSize,
-              audienceType:
-                selected?.audienceType === 'mass' || selected?.audienceType === 'niche'
-                  ? (selected.audienceType as AudienceType)
-                  : row.audienceType,
-              targetingCriteria: selected
-                ? [selected.interests, selected.behaviors, selected.demographics]
-                    .filter(Boolean)
-                    .join('; ')
-                : row.targetingCriteria,
-            });
-          }}
-          className="w-full border-0 bg-transparent text-xs focus:outline-none"
-        >
-          <option value="">— Select or type —</option>
-          {audiences.map((a) => (
-            <option key={a.id} value={a.name}>
-              {a.name}
-              {a.estimatedSizeMin
-                ? ` (${a.estimatedSizeMin}${a.estimatedSizeMax ? '-' + a.estimatedSizeMax : ''})`
-                : ''}
-            </option>
-          ))}
-        </select>
-      </td>
+        <td className="px-2 py-1">
+          <select
+            value={row.audienceType}
+            onChange={(e) => ch({ audienceType: e.target.value as AudienceType, kpis: null, noData: false, currencyMismatch: false })}
+            className="w-full border-0 bg-transparent text-xs focus:outline-none"
+          >
+            <option value="mass">Mass</option>
+            <option value="niche">Niche</option>
+          </select>
+        </td>
 
-      <td className="px-2 py-1">
-        <input
-          value={row.audienceSize}
-          onChange={(e) => ch({ audienceSize: e.target.value })}
-          placeholder="e.g. 1.2M"
-          className="w-full border-0 bg-transparent text-xs focus:outline-none placeholder:text-[#C9CDDA]"
-        />
-      </td>
+        <td className="px-2 py-1">
+          <select
+            value={row.audienceName}
+            onChange={(e) => {
+              const selected = audiences.find((a) => a.name === e.target.value);
+              ch({
+                audienceName: e.target.value,
+                audienceSize: selected
+                  ? [selected.estimatedSizeMin, selected.estimatedSizeMax].filter(Boolean).join('-')
+                  : row.audienceSize,
+                audienceType:
+                  selected?.audienceType === 'mass' || selected?.audienceType === 'niche'
+                    ? (selected.audienceType as AudienceType)
+                    : row.audienceType,
+                targetingCriteria: selected
+                  ? [selected.interests, selected.behaviors, selected.demographics]
+                      .filter(Boolean)
+                      .join('; ')
+                  : row.targetingCriteria,
+              });
+            }}
+            className="w-full border-0 bg-transparent text-xs focus:outline-none"
+          >
+            <option value="">— Select or type —</option>
+            {audiences.map((a) => (
+              <option key={a.id} value={a.name}>
+                {a.name}
+                {a.estimatedSizeMin
+                  ? ` (${a.estimatedSizeMin}${a.estimatedSizeMax ? '-' + a.estimatedSizeMax : ''})`
+                  : ''}
+              </option>
+            ))}
+          </select>
+        </td>
 
-      <td className="px-2 py-1">
-        <select
-          value={row.creative}
-          onChange={(e) => ch({ creative: e.target.value })}
-          className="w-full border-0 bg-transparent text-xs focus:outline-none"
-        >
-          <option value="">— Select —</option>
-          {creativeTypes.map((ct) => (
-            <option key={ct.id} value={ct.name}>
-              {ct.name}
-            </option>
-          ))}
-        </select>
-      </td>
+        <td className="px-2 py-1">
+          <input
+            value={row.audienceSize}
+            onChange={(e) => ch({ audienceSize: e.target.value })}
+            placeholder="e.g. 1.2M"
+            className="w-full border-0 bg-transparent text-xs focus:outline-none placeholder:text-[#C9CDDA]"
+          />
+        </td>
 
-      {/* Country */}
-      <td className="px-2 py-1">
-        <select
-          value={row.country}
-          onChange={(e) => ch({ country: e.target.value })}
-          className="w-full border-0 bg-transparent text-xs focus:outline-none"
-        >
-          <option value="">—</option>
-          <option value="Sri Lanka">Sri Lanka</option>
-          <option value="All Island">All Island</option>
-          <option value="Middle East">Middle East</option>
-          <option value="Kuwait">Kuwait</option>
-          <option value="Global">Global</option>
-        </select>
-      </td>
+        <td className="px-2 py-1">
+          <select
+            value={row.creative}
+            onChange={(e) => ch({ creative: e.target.value })}
+            className="w-full border-0 bg-transparent text-xs focus:outline-none"
+          >
+            <option value="">— Select —</option>
+            {creativeTypes.map((ct) => (
+              <option key={ct.id} value={ct.name}>
+                {ct.name}
+              </option>
+            ))}
+          </select>
+        </td>
 
-      {/* Buy Type */}
-      <td className="px-2 py-1">
-        <select
-          value={row.buyType}
-          onChange={(e) => ch({ buyType: e.target.value })}
-          className="w-full border-0 bg-transparent text-xs focus:outline-none"
-        >
-          <option value="">—</option>
-          <option value="Auction">Auction</option>
-          <option value="CPM">CPM</option>
-          <option value="Awareness (Auction)">Awareness (Auction)</option>
-          <option value="Reach & Frequency">Reach &amp; Frequency</option>
-        </select>
-      </td>
+        {/* Country */}
+        <td className="px-2 py-1">
+          <select
+            value={row.country}
+            onChange={(e) => ch({ country: e.target.value })}
+            className="w-full border-0 bg-transparent text-xs focus:outline-none"
+          >
+            <option value="">—</option>
+            <option value="Sri Lanka">Sri Lanka</option>
+            <option value="All Island">All Island</option>
+            <option value="Middle East">Middle East</option>
+            <option value="Kuwait">Kuwait</option>
+            <option value="Global">Global</option>
+          </select>
+        </td>
 
-      {/* Budget */}
-      <td className="px-2 py-1">
-        <input
-          type="number"
-          value={row.budget}
-          onChange={(e) => ch({ budget: e.target.value, kpis: null, noData: false, currencyMismatch: false })}
-          placeholder="0"
-          className="w-24 border-0 bg-transparent text-xs text-right focus:outline-none placeholder:text-[#C9CDDA]"
-        />
-        <span className="text-[#C9CDDA] ml-0.5 text-[10px]">{currency}</span>
-      </td>
+        {/* Buy Type */}
+        <td className="px-2 py-1">
+          <select
+            value={row.buyType}
+            onChange={(e) => ch({ buyType: e.target.value })}
+            className="w-full border-0 bg-transparent text-xs focus:outline-none"
+          >
+            <option value="">—</option>
+            <option value="Auction">Auction</option>
+            <option value="CPM">CPM</option>
+            <option value="Awareness (Auction)">Awareness (Auction)</option>
+            <option value="Reach & Frequency">Reach &amp; Frequency</option>
+          </select>
+        </td>
 
-      {/* % of media spend */}
-      <td className="px-2 py-1 text-right tabular-nums text-[#4B5675]">
-        {pct != null && pct > 0 ? `${fmtNum(pct, 1)}%` : '—'}
-      </td>
+        {/* Budget */}
+        <td className="px-2 py-1">
+          <input
+            type="number"
+            value={row.budget}
+            onChange={(e) => ch({ budget: e.target.value, kpis: null, noData: false, currencyMismatch: false })}
+            placeholder="0"
+            className="w-24 border-0 bg-transparent text-xs text-right focus:outline-none placeholder:text-[#C9CDDA]"
+          />
+          <span className="text-[#C9CDDA] ml-0.5 text-[10px]">{currency}</span>
+        </td>
 
-      {/* KPI columns */}
-      <td className="px-2 py-1 text-center text-[#4B5675]">{firstKpiContent()}</td>
+        {/* % of media spend */}
+        <td className="px-2 py-1 text-right tabular-nums text-[#4B5675]">
+          {pct != null && pct > 0 ? `${fmtNum(pct, 1)}%` : '—'}
+        </td>
 
-      <td className="px-2 py-1 text-center text-[#4B5675] tabular-nums">
-        {kpiCell(
-          kpi ? (
-            <span title={fullRange(kpi.reach.low, kpi.reach.high)}>
-              {optionCCell(kpi.reach)}
-            </span>
-          ) : '—',
-        )}
-      </td>
+        {/* KPI columns */}
+        <td className="px-2 py-1 text-center text-[#4B5675]">{firstKpiContent()}</td>
 
-      <td className="px-2 py-1 text-center text-[#4B5675] tabular-nums">
-        {kpiCell(kpi ? fmtFreqRange(kpi.frequency.low, kpi.frequency.high) : '—')}
-      </td>
+        <td className="px-2 py-1 text-center text-[#4B5675] tabular-nums">
+          {kpiCell(
+            kpi ? (
+              <span title={fullRange(kpi.reach.low, kpi.reach.high)}>
+                {optionCCell(kpi.reach)}
+              </span>
+            ) : '—',
+          )}
+        </td>
 
-      <td className="px-2 py-1 text-center text-[#4B5675] tabular-nums">
-        {kpiCell(
-          kpi ? (
-            <span title={fullRange(kpi.clicks.low, kpi.clicks.high)}>
-              {optionCCell(kpi.clicks)}
-            </span>
-          ) : '—',
-        )}
-      </td>
+        <td className="px-2 py-1 text-center text-[#4B5675] tabular-nums">
+          {kpiCell(kpi ? fmtFreqRange(kpi.frequency.low, kpi.frequency.high) : '—')}
+        </td>
 
-      <td className="px-2 py-1 text-center text-[#4B5675] tabular-nums">
-        {kpiCell(
-          kpi ? (
-            <span>
-              {kpi.ctr.low != null || kpi.ctr.high != null
-                ? `${fmtCtrPct(kpi.ctr.low)} – ${fmtCtrPct(kpi.ctr.high)}`
-                : '—'}
-            </span>
-          ) : '—',
-        )}
-      </td>
+        <td className="px-2 py-1 text-center text-[#4B5675] tabular-nums">
+          {kpiCell(
+            kpi ? (
+              <span title={fullRange(kpi.clicks.low, kpi.clicks.high)}>
+                {optionCCell(kpi.clicks)}
+              </span>
+            ) : '—',
+          )}
+        </td>
 
-      {/* Video Views */}
-      <td className="px-2 py-1 text-center text-[#4B5675] tabular-nums">
-        {kpiCell(
-          kpi ? (
-            <span title={fullRange(kpi.videoViews2s.low, kpi.videoViews2s.high)}>
-              {optionCCell(kpi.videoViews2s)}
-            </span>
-          ) : '—',
-        )}
-      </td>
+        <td className="px-2 py-1 text-center text-[#4B5675] tabular-nums">
+          {kpiCell(
+            kpi ? (
+              <span>
+                {kpi.ctr.low != null || kpi.ctr.high != null
+                  ? `${fmtCtrPct(kpi.ctr.low)} – ${fmtCtrPct(kpi.ctr.high)}`
+                  : '—'}
+              </span>
+            ) : '—',
+          )}
+        </td>
 
-      <td className="px-2 py-1 text-center text-[#4B5675] tabular-nums">
-        {kpiCell(
-          kpi ? (
-            <span title={fullRange(kpi.leads.low, kpi.leads.high)}>
-              {optionCCell(kpi.leads)}
-            </span>
-          ) : '—',
-        )}
-      </td>
+        {/* Video Views */}
+        <td className="px-2 py-1 text-center text-[#4B5675] tabular-nums">
+          {kpiCell(
+            kpi ? (
+              <span title={fullRange(kpi.videoViews2s.low, kpi.videoViews2s.high)}>
+                {optionCCell(kpi.videoViews2s)}
+              </span>
+            ) : '—',
+          )}
+        </td>
 
-      <td className="px-2 py-1 text-center">
-        <button
-          onClick={() => onRemove(row.id)}
-          className="text-[#E1E3EA] hover:text-[#F8285A] transition-colors"
-          title="Remove row"
-        >
-          ✕
-        </button>
-      </td>
-    </tr>
+        <td className="px-2 py-1 text-center text-[#4B5675] tabular-nums">
+          {kpiCell(
+            kpi ? (
+              <span title={fullRange(kpi.leads.low, kpi.leads.high)}>
+                {optionCCell(kpi.leads)}
+              </span>
+            ) : '—',
+          )}
+        </td>
+
+        {/* Notes toggle */}
+        <td className="px-2 py-1 text-center">
+          <button
+            onClick={() => onToggleNotes(row.id)}
+            className={`text-sm transition-colors ${row.notes ? 'text-[#F6B100]' : 'text-[#E1E3EA] hover:text-[#99A1B7]'}`}
+            title={row.notes || 'Add note'}
+          >
+            📝
+          </button>
+        </td>
+
+        <td className="px-2 py-1 text-center">
+          <button
+            onClick={() => onRemove(row.id)}
+            className="text-[#E1E3EA] hover:text-[#F8285A] transition-colors"
+            title="Remove row"
+          >
+            ✕
+          </button>
+        </td>
+      </tr>
+
+      {/* Inline notes row */}
+      {showNotes && (
+        <tr className="bg-[#FFFDF5] border-b border-[#F6B100]/20">
+          <td colSpan={2} />
+          <td colSpan={18} className="px-3 py-2">
+            <input
+              value={row.notes}
+              onChange={(e) => ch({ notes: e.target.value })}
+              placeholder="Platform caveats, targeting tips, creative notes…"
+              className="w-full bg-transparent border-0 text-xs text-[#4B5675] focus:outline-none placeholder:text-[#C9CDDA]"
+            />
+          </td>
+          <td />
+        </tr>
+      )}
+    </>
   );
 }
+
+// ─── Save as Template Modal ───────────────────────────────────────────────────
+
+interface SaveTemplateModalProps {
+  campaignName: string;
+  onSave: (name: string, description: string, category: string, isGlobal: boolean) => Promise<void>;
+  onClose: () => void;
+  isAdmin: boolean;
+}
+
+function SaveTemplateModal({ campaignName, onSave, onClose, isAdmin }: SaveTemplateModalProps) {
+  const [name, setName] = useState(`${campaignName || 'Plan'} Template`);
+  const [description, setDescription] = useState('');
+  const [category, setCategory] = useState('');
+  const [isGlobal, setIsGlobal] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async () => {
+    if (!name.trim()) return;
+    setSaving(true);
+    setError('');
+    try {
+      await onSave(name.trim(), description, category, isGlobal);
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Save failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-[12px] border border-[#E1E3EA] shadow-xl w-full max-w-md">
+        <div className="px-6 py-4 border-b border-[#F1F1F4]">
+          <h3 className="text-base font-semibold text-[#071437]">Save as Template</h3>
+          <p className="text-xs text-[#99A1B7] mt-0.5">Reuse this plan structure for future campaigns</p>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          <div>
+            <label className="block text-[13px] font-medium text-[#4B5675] mb-1.5">Template Name</label>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full border border-[#E1E3EA] rounded-[6px] px-3 py-2 text-sm focus:outline-none focus:border-[#1B84FF]"
+              autoFocus
+            />
+          </div>
+          <div>
+            <label className="block text-[13px] font-medium text-[#4B5675] mb-1.5">Description <span className="text-[#99A1B7] font-normal">(optional)</span></label>
+            <input
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="e.g. Standard FMCG awareness campaign"
+              className="w-full border border-[#E1E3EA] rounded-[6px] px-3 py-2 text-sm focus:outline-none focus:border-[#1B84FF]"
+            />
+          </div>
+          <div>
+            <label className="block text-[13px] font-medium text-[#4B5675] mb-1.5">Category</label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full border border-[#E1E3EA] rounded-[6px] px-3 py-2 text-sm focus:outline-none focus:border-[#1B84FF]"
+            >
+              <option value="">— None —</option>
+              <option value="FMCG">FMCG</option>
+              <option value="Banking">Banking</option>
+              <option value="Seasonal">Seasonal</option>
+              <option value="E-commerce">E-commerce</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          {isAdmin && (
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isGlobal}
+                onChange={(e) => setIsGlobal(e.target.checked)}
+                className="rounded border-[#E1E3EA]"
+              />
+              <span className="text-sm text-[#4B5675]">Make available to all users</span>
+            </label>
+          )}
+          {error && <p className="text-xs text-[#F8285A]">{error}</p>}
+        </div>
+        <div className="px-6 py-4 border-t border-[#F1F1F4] flex items-center justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm text-[#4B5675] border border-[#E1E3EA] rounded-lg hover:bg-[#F9F9F9] transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={saving || !name.trim()}
+            className="px-4 py-2 text-sm font-semibold text-[#7239EA] border border-[#7239EA] rounded-lg hover:bg-[#F8F5FF] transition-colors disabled:opacity-60"
+          >
+            {saving ? 'Saving…' : 'Save Template'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Period presets ───────────────────────────────────────────────────────────
+
+const PERIOD_PRESETS = [
+  { label: '2 Weeks', days: 14 },
+  { label: '1 Month', days: 30 },
+  { label: '2 Months', days: 61 },
+  { label: '3 Months', days: 91 },
+  { label: '6 Months', days: 183 },
+];
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
   const router = useRouter();
   const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [open, setOpen] = useState(true);
   const [clients, setClients] = useState<Client[]>([]);
   const [audiences, setAudiences] = useState<Audience[]>([]);
@@ -508,6 +677,16 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
   const [initialLoading, setInitialLoading] = useState(!!props.groupId);
   const [exportingExcel, setExportingExcel] = useState(false);
   const [exportingPptx, setExportingPptx] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
+
+  // Bulk row operations
+  const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set());
+
+  // Notes visibility per row
+  const [openNotesRowIds, setOpenNotesRowIds] = useState<Set<string>>(new Set());
+
+  // Save as template modal
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
 
   // Stable refs — avoids stale closures in async callbacks
   const planRowsRef = useRef<PlanRow[]>(variants[0].rows);
@@ -530,9 +709,9 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
       try {
         const stored = localStorage.getItem('planflow_user');
         if (stored) {
-          const user = JSON.parse(stored) as { name?: string };
-          if (user.name) {
-            setHeader((h) => ({ ...h, preparedBy: h.preparedBy || user.name! }));
+          const u = JSON.parse(stored) as { name?: string };
+          if (u.name) {
+            setHeader((h) => ({ ...h, preparedBy: h.preparedBy || u.name! }));
           }
         }
       } catch { /* ignore */ }
@@ -681,6 +860,21 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
   const rowBudgetTotal = activeRows.reduce((s, r) => s + (parseFloat(r.budget) || 0), 0);
   const duration = calcDuration(header.startDate, header.endDate);
 
+  // ─── Period presets ────────────────────────────────────────────────────────
+
+  const applyPreset = (days: number) => {
+    const start = new Date();
+    const dayOfWeek = start.getDay();
+    const daysToMonday = dayOfWeek === 0 ? 1 : dayOfWeek === 1 ? 0 : 8 - dayOfWeek;
+    start.setDate(start.getDate() + daysToMonday);
+    const end = new Date(start);
+    end.setDate(end.getDate() + days - 1);
+    hdr({
+      startDate: start.toISOString().slice(0, 10),
+      endDate: end.toISOString().slice(0, 10),
+    });
+  };
+
   // ─── Variant management ───────────────────────────────────────────────────
 
   const updateActiveRows = useCallback(
@@ -692,7 +886,7 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
     [],
   );
 
-  const handleDuplicate = () => {
+  const handleDuplicateVariant = () => {
     const src = variants[activeIdxRef.current].rows;
     const groupId = variants[0].variantGroupId ?? variants[0].savedId;
     const newVariant: PlanVariant = {
@@ -732,9 +926,46 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
   const handleRemoveRow = useCallback(
     (id: string) => {
       updateActiveRows((rows) => rows.filter((r) => r.id !== id));
+      setSelectedRowIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
+      setOpenNotesRowIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
     },
     [updateActiveRows],
   );
+
+  // ─── Bulk row operations ──────────────────────────────────────────────────
+
+  const handleToggleSelect = useCallback((id: string, checked: boolean) => {
+    setSelectedRowIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id); else next.delete(id);
+      return next;
+    });
+  }, []);
+
+  const handleToggleNotes = useCallback((id: string) => {
+    setOpenNotesRowIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const bulkUpdateRows = (patch: Partial<PlanRow>) => {
+    updateActiveRows((rows) =>
+      rows.map((r) =>
+        selectedRowIds.has(r.id)
+          ? { ...r, ...patch, kpis: null, noData: false, currencyMismatch: false }
+          : r,
+      ),
+    );
+    selectedRowIds.forEach((id) => calcRow(id, patch));
+    setSelectedRowIds(new Set());
+  };
+
+  const bulkDeleteRows = () => {
+    updateActiveRows((rows) => rows.filter((r) => !selectedRowIds.has(r.id)));
+    setSelectedRowIds(new Set());
+  };
 
   // ─── Summary aggregates ───────────────────────────────────────────────────
 
@@ -794,6 +1025,7 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
       budget: parseFloat(r.budget) || undefined,
       projectedKpis: r.kpis ? { ...r.kpis } : {},
       sortOrder: idx,
+      notes: r.notes || undefined,
     })),
   });
 
@@ -805,7 +1037,7 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
       const safe = (header.campaignName || 'media-plan').replace(/[^a-zA-Z0-9-_]/g, '_');
       await exportPlanExcel(savedId, `${safe}.xlsx`);
     } catch {
-      // ignore — browser will show nothing; user can retry
+      // ignore
     } finally {
       setExportingExcel(false);
     }
@@ -830,7 +1062,6 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
     setSaveMsg('');
     try {
       const variant = variants[activeIdx];
-      // For Option 2+, use the first variant's variantGroupId
       const groupId = variants[0].variantGroupId ?? variants[0].savedId ?? undefined;
       const variantGroupId =
         variant.variantGroupId ?? (activeIdx === 0 ? undefined : groupId);
@@ -856,7 +1087,6 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
         ),
       );
 
-      // Navigate to /media-plans/[groupId] on first save of Option 1
       if (!variant.savedId && activeIdx === 0 && !props.groupId) {
         router.push(`/media-plans/${newGroupId}`);
       }
@@ -867,6 +1097,37 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleDuplicatePlan = async () => {
+    const savedId = activeVariant.savedId;
+    if (!savedId) return;
+    setDuplicating(true);
+    try {
+      const result = await duplicatePlan(savedId);
+      const newGroupId = result.variantGroupId ?? result.id;
+      setSaveMsg('Plan duplicated!');
+      setTimeout(() => setSaveMsg(''), 3000);
+      router.push(`/media-plans/${newGroupId}`);
+    } catch (e) {
+      setSaveMsg(e instanceof Error ? e.message : 'Duplicate failed');
+      setTimeout(() => setSaveMsg(''), 3000);
+    } finally {
+      setDuplicating(false);
+    }
+  };
+
+  const handleSaveAsTemplate = async (
+    name: string,
+    description: string,
+    category: string,
+    isGlobal: boolean,
+  ) => {
+    const savedId = activeVariant.savedId;
+    if (!savedId) return;
+    await createTemplateFromPlan(savedId, { name, description, category, isGlobal });
+    setSaveMsg('Template saved!');
+    setTimeout(() => setSaveMsg(''), 3000);
   };
 
   // ─── Status workflow ──────────────────────────────────────────────────────
@@ -900,6 +1161,15 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
 
   return (
     <div className="bg-white rounded-[8px] border border-[#E1E3EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      {showTemplateModal && (
+        <SaveTemplateModal
+          campaignName={header.campaignName}
+          onSave={handleSaveAsTemplate}
+          onClose={() => setShowTemplateModal(false)}
+          isAdmin={isAdmin}
+        />
+      )}
+
       {/* Back to plans list */}
       {props.groupId && (
         <div className="px-6 pt-4">
@@ -993,12 +1263,26 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
               />
             </div>
 
-            {/* Campaign Period */}
+            {/* Campaign Period with presets */}
             <div>
               <label className="block text-[13px] font-medium text-[#4B5675] mb-1.5">
                 Campaign Period
                 {duration && <span className="ml-2 text-[#1B84FF] font-semibold">{duration}</span>}
               </label>
+              {/* Quick presets */}
+              <div className="flex items-center gap-1 mb-1.5 flex-wrap">
+                <span className="text-[10px] text-[#99A1B7] font-medium shrink-0">Quick:</span>
+                {PERIOD_PRESETS.map((p) => (
+                  <button
+                    key={p.label}
+                    type="button"
+                    onClick={() => applyPreset(p.days)}
+                    className="px-2 py-0.5 text-[10px] rounded border border-[#E1E3EA] text-[#4B5675] hover:bg-[#F9F9F9] hover:border-[#1B84FF] transition-colors"
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
               <div className="flex gap-1 items-center">
                 <input
                   type="date"
@@ -1157,7 +1441,7 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
                 </button>
               ))}
               <button
-                onClick={handleDuplicate}
+                onClick={handleDuplicateVariant}
                 className="ml-2 px-3 py-2 text-xs text-[#99A1B7] hover:text-[#1B84FF] transition-colors flex items-center gap-1"
                 title="Duplicate current variant as a new option"
               >
@@ -1181,11 +1465,82 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
             </div>
           )}
 
+          {/* Bulk action bar */}
+          {selectedRowIds.size > 0 && (
+            <div className="flex items-center gap-3 flex-wrap bg-[#EEF6FF] border border-[#1B84FF]/20 rounded-lg px-4 py-2.5 text-sm">
+              <span className="font-semibold text-[#1B84FF] shrink-0">
+                {selectedRowIds.size} row{selectedRowIds.size > 1 ? 's' : ''} selected
+              </span>
+              <span className="text-[#E1E3EA]">|</span>
+
+              <label className="text-[11px] text-[#4B5675] shrink-0">Platform:</label>
+              <select
+                onChange={(e) => {
+                  if (!e.target.value) return;
+                  bulkUpdateRows({ platform: e.target.value });
+                  e.target.value = '';
+                }}
+                className="border border-[#E1E3EA] rounded px-2 py-1 text-xs"
+              >
+                <option value="">— Change —</option>
+                {PLATFORMS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+              </select>
+
+              <label className="text-[11px] text-[#4B5675] shrink-0">Objective:</label>
+              <select
+                onChange={(e) => {
+                  if (!e.target.value) return;
+                  bulkUpdateRows({ objective: e.target.value as Objective });
+                  e.target.value = '';
+                }}
+                className="border border-[#E1E3EA] rounded px-2 py-1 text-xs"
+              >
+                <option value="">— Change —</option>
+                {OBJECTIVES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+
+              <label className="text-[11px] text-[#4B5675] shrink-0">Audience:</label>
+              <select
+                onChange={(e) => {
+                  if (!e.target.value) return;
+                  bulkUpdateRows({ audienceType: e.target.value as AudienceType });
+                  e.target.value = '';
+                }}
+                className="border border-[#E1E3EA] rounded px-2 py-1 text-xs"
+              >
+                <option value="">— Change —</option>
+                <option value="mass">Mass</option>
+                <option value="niche">Niche</option>
+              </select>
+
+              <button
+                onClick={bulkDeleteRows}
+                className="ml-auto text-[#F8285A] hover:text-[#D6204E] font-medium flex items-center gap-1 text-xs"
+              >
+                🗑 Delete Selected
+              </button>
+            </div>
+          )}
+
           {/* Rows table */}
           <div className="overflow-x-auto border border-[#E1E3EA] rounded-[8px]">
-            <table className="w-full text-xs border-collapse min-w-[1600px]">
+            <table className="w-full text-xs border-collapse min-w-[1700px]">
               <thead>
                 <tr className="bg-[#F9F9F9] border-b border-[#E1E3EA]">
+                  <th className="px-2 py-2.5 w-8 sticky left-0 bg-[#F9F9F9]">
+                    <input
+                      type="checkbox"
+                      checked={selectedRowIds.size === activeRows.length && activeRows.length > 0}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedRowIds(new Set(activeRows.map((r) => r.id)));
+                        } else {
+                          setSelectedRowIds(new Set());
+                        }
+                      }}
+                      className="rounded border-[#E1E3EA] cursor-pointer"
+                    />
+                  </th>
                   <th className="px-2 py-2.5 w-8 sticky left-0 bg-[#F9F9F9] text-[10px] font-semibold text-[#99A1B7] uppercase tracking-wider">#</th>
                   <th className="px-2 py-2.5 text-left text-[10px] font-semibold text-[#99A1B7] uppercase tracking-wider w-32">Platform</th>
                   <th className="px-2 py-2.5 text-left text-[10px] font-semibold text-[#99A1B7] uppercase tracking-wider w-24">Objective</th>
@@ -1204,6 +1559,7 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
                   <th className="px-2 py-2.5 text-center text-[10px] font-semibold text-[#99A1B7] uppercase tracking-wider w-20">CTR</th>
                   <th className="px-2 py-2.5 text-center text-[10px] font-semibold text-[#99A1B7] uppercase tracking-wider w-24">Video Views</th>
                   <th className="px-2 py-2.5 text-center text-[10px] font-semibold text-[#99A1B7] uppercase tracking-wider w-20">Leads</th>
+                  <th className="px-2 py-2.5 w-8 text-center text-[10px] font-semibold text-[#99A1B7]" title="Notes">📝</th>
                   <th className="px-2 py-2.5 w-8"></th>
                 </tr>
               </thead>
@@ -1215,8 +1571,12 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
                     idx={idx}
                     currency={header.currency}
                     totalMediaSpend={mediaSpend}
+                    selected={selectedRowIds.has(row.id)}
+                    showNotes={openNotesRowIds.has(row.id)}
                     onChange={handleRowChange}
                     onRemove={handleRemoveRow}
+                    onToggleSelect={handleToggleSelect}
+                    onToggleNotes={handleToggleNotes}
                     audiences={audiences}
                     creativeTypes={creativeTypes}
                   />
@@ -1224,12 +1584,12 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
               </tbody>
               <tfoot>
                 <tr className="bg-[#F9F9F9] border-t border-[#E1E3EA] text-xs font-semibold text-[#071437]">
-                  {/* cols: #, Platform, Objective, Audience, Audience Name, Est. Size, Creative, Country, Buy Type = 9 */}
-                  <td colSpan={9} className="px-3 py-2 sticky left-0 bg-[#F9F9F9] text-[#4B5675]">Total</td>
+                  {/* cols: checkbox, #, Platform, Objective, Audience, Audience Name, Est. Size, Creative, Country, Buy Type = 10 */}
+                  <td colSpan={10} className="px-3 py-2 sticky left-0 bg-[#F9F9F9] text-[#4B5675]">Total</td>
                   <td className="px-2 py-2 text-right tabular-nums">
                     {header.currency} {fmtNum(rowBudgetTotal)}
                   </td>
-                  {/* % column — blank in total row */}
+                  {/* % column */}
                   <td />
                   {/* Impressions */}
                   <td className="px-2 py-2 text-center text-[#4B5675] tabular-nums">
@@ -1243,8 +1603,9 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
                       {fmtKpiRange(totalReach.low, totalReach.high)}
                     </span>
                   </td>
-                  {/* Freq, Clicks, CTR, Video Views, Leads, Delete */}
+                  {/* Freq, Clicks, CTR, Video Views, Leads, Notes, Delete */}
                   <td colSpan={5} />
+                  <td />
                   <td />
                 </tr>
               </tfoot>
@@ -1300,7 +1661,7 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
             />
           </div>
 
-          {/* Save + Export */}
+          {/* Save + Export + Actions */}
           <div className="flex items-center gap-3 flex-wrap">
             <button
               onClick={handleSave}
@@ -1352,6 +1713,24 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
                   )}
                   {exportingPptx ? 'Generating…' : 'Export PPTX'}
                 </button>
+                <button
+                  onClick={() => setShowTemplateModal(true)}
+                  className="bg-white border border-[#7239EA] text-[#7239EA] rounded-lg px-4 py-2.5 text-sm font-semibold hover:bg-[#F8F5FF] transition-colors shadow-sm"
+                  title="Save this plan structure as a reusable template"
+                >
+                  💾 Save as Template
+                </button>
+                <button
+                  onClick={handleDuplicatePlan}
+                  disabled={duplicating}
+                  className="bg-white border border-[#E1E3EA] text-[#4B5675] rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-[#F9F9F9] transition-colors flex items-center gap-2 disabled:opacity-60"
+                  title="Clone this plan to a new draft"
+                >
+                  {duplicating ? (
+                    <span className="w-3.5 h-3.5 border-2 border-[#4B5675]/30 border-t-[#4B5675] rounded-full animate-spin" />
+                  ) : '📋'}
+                  {duplicating ? 'Duplicating…' : 'Duplicate Plan'}
+                </button>
               </>
             )}
             {/* Status workflow buttons */}
@@ -1399,7 +1778,7 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
             })()}
             {saveMsg && (
               <span
-                className={`text-sm font-medium ${saveMsg === 'Saved!' ? 'text-[#17C653]' : 'text-[#F8285A]'}`}
+                className={`text-sm font-medium ${saveMsg === 'Saved!' || saveMsg.includes('duplicated') || saveMsg.includes('Template') ? 'text-[#17C653]' : 'text-[#F8285A]'}`}
               >
                 {saveMsg}
               </span>

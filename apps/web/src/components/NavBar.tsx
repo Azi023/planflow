@@ -55,6 +55,7 @@ export function NavBar() {
         <nav className="flex items-center gap-6 h-full">
           <NavLink href="/dashboard">Dashboard</NavLink>
           <NavLink href="/media-plans">Media Plans</NavLink>
+          <NavLink href="/templates">Templates</NavLink>
           <NavLink href="/benchmarks">Benchmarks</NavLink>
         </nav>
 

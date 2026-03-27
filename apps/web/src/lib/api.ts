@@ -121,6 +121,74 @@ export function fetchPlanGroup(groupId: string): Promise<MediaPlan[]> {
   return request<MediaPlan[]>(`/media-plans/group/${groupId}`);
 }
 
+export function duplicatePlan(planId: string): Promise<MediaPlan> {
+  return request<MediaPlan>(`/media-plans/${planId}/duplicate`, { method: 'POST' });
+}
+
+// ─── Templates ────────────────────────────────────────────────────────────────
+
+export interface PlanTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  category: string | null;
+  clientId: string | null;
+  productId: string | null;
+  fee1Pct: number;
+  fee1Label: string;
+  fee2Pct: number | null;
+  fee2Label: string | null;
+  bufferPct: number;
+  currency: string;
+  notes: string | null;
+  templateRows: Record<string, unknown>[];
+  createdById: string | null;
+  isGlobal: boolean;
+  useCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export function fetchTemplates(): Promise<PlanTemplate[]> {
+  return request<PlanTemplate[]>('/templates');
+}
+
+export function fetchTemplate(id: string): Promise<PlanTemplate> {
+  return request<PlanTemplate>(`/templates/${id}`);
+}
+
+export function createTemplateFromPlan(
+  planId: string,
+  data: { name: string; description?: string; category?: string; isGlobal?: boolean },
+): Promise<PlanTemplate> {
+  return request<PlanTemplate>(`/templates/from-plan/${planId}`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function useTemplate(
+  templateId: string,
+  data: {
+    campaignName: string;
+    clientId?: string;
+    productId?: string;
+    totalBudget: number;
+    startDate?: string;
+    endDate?: string;
+    currency?: string;
+  },
+): Promise<MediaPlan> {
+  return request<MediaPlan>(`/templates/${templateId}/use`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteTemplate(id: string): Promise<void> {
+  return request<void>(`/templates/${id}`, { method: 'DELETE' });
+}
+
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

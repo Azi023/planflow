@@ -165,6 +165,106 @@ export class MediaPlansService {
     return this.findOne(id);
   }
 
+  async duplicate(planId: string): Promise<MediaPlan> {
+    const original = await this.findOne(planId);
+    const rows = await this.rowRepo.find({
+      where: { planId },
+      order: { sortOrder: 'ASC' },
+    });
+
+    const year = new Date().getFullYear();
+    const count = await this.planRepo.count({
+      where: { referenceNumber: Like(`JM-${year}-%`) },
+    });
+    const refNumber = `JM-${year}-${String(count + 1).padStart(3, '0')}`;
+
+    const newPlan = this.planRepo.create({
+      clientId: original.clientId,
+      productId: original.productId,
+      campaignName: `Copy of ${original.campaignName ?? 'Plan'}`,
+      campaignPeriod: original.campaignPeriod,
+      startDate: original.startDate,
+      endDate: original.endDate,
+      bufferPct: original.bufferPct,
+      totalBudget: original.totalBudget,
+      fee1Pct: original.fee1Pct,
+      fee1Label: original.fee1Label,
+      fee2Pct: original.fee2Pct,
+      fee2Label: original.fee2Label,
+      referenceNumber: refNumber,
+      preparedBy: original.preparedBy,
+      currency: original.currency,
+      variantName: original.variantName,
+      notes: original.notes,
+      status: 'draft',
+    });
+
+    const savedPlan = await this.planRepo.save(newPlan);
+    await this.planRepo.update(savedPlan.id, {
+      variantGroupId: savedPlan.id,
+    });
+
+    if (rows.length) {
+      const clonedRows = rows.map((r) =>
+        this.rowRepo.create({
+          planId: savedPlan.id,
+          platform: r.platform,
+          audienceType: r.audienceType,
+          adType: r.adType,
+          objective: r.objective,
+          audienceName: r.audienceName,
+          audienceSize: r.audienceSize,
+          targetingCriteria: r.targetingCriteria,
+          creative: r.creative,
+          budget: r.budget,
+          benchmarkId: r.benchmarkId,
+          projectedKpis: r.projectedKpis,
+          sortOrder: r.sortOrder,
+          country: r.country,
+          buyType: r.buyType,
+          platformRangeCpm: r.platformRangeCpm,
+          platformRangeCpl: r.platformRangeCpl,
+          notes: r.notes,
+        }),
+      );
+      await this.rowRepo.save(clonedRows);
+    }
+
+    return this.findOne(savedPlan.id);
+  }
+
+  async bulkUpdateRows(
+    planId: string,
+    rows: Array<{
+      id: string;
+      platform?: string;
+      objective?: string;
+      audienceType?: string;
+      budget?: number;
+    }>,
+  ): Promise<MediaPlan> {
+    const plan = await this.planRepo.findOne({ where: { id: planId } });
+    if (!plan) throw new NotFoundException(`Plan ${planId} not found`);
+
+    await Promise.all(
+      rows.map((r) => {
+        const { id, ...updates } = r;
+        return this.rowRepo.update({ id, planId }, updates);
+      }),
+    );
+
+    return this.findOne(planId);
+  }
+
+  async bulkDeleteRows(planId: string, rowIds: string[]): Promise<MediaPlan> {
+    const plan = await this.planRepo.findOne({ where: { id: planId } });
+    if (!plan) throw new NotFoundException(`Plan ${planId} not found`);
+
+    await Promise.all(rowIds.map((id) => this.rowRepo.delete({ id, planId })));
+
+    return this.findOne(planId);
+  }
+
   findByGroup(groupId: string): Promise<MediaPlan[]> {
     return this.planRepo.find({
       where: { variantGroupId: groupId },
@@ -214,6 +314,7 @@ export class MediaPlansService {
           buyType: r.buyType ?? null,
           platformRangeCpm: r.platformRangeCpm ?? null,
           platformRangeCpl: r.platformRangeCpl ?? null,
+          notes: r.notes ?? null,
         });
       }),
     );

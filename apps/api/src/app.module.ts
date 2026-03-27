@@ -11,6 +11,7 @@ import { Audience } from './entities/audience.entity';
 import { CreativeType } from './entities/creative-type.entity';
 import { User } from './entities/user.entity';
 import { CampaignActual } from './entities/campaign-actual.entity';
+import { PlanTemplate } from './entities/plan-template.entity';
 import { BenchmarksModule } from './benchmarks/benchmarks.module';
 import { ClientsModule } from './clients/clients.module';
 import { MediaPlansModule } from './media-plans/media-plans.module';
@@ -20,6 +21,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { AuthModule } from './auth/auth.module';
 import { ExportModule } from './export/export.module';
 import { ActualsModule } from './actuals/actuals.module';
+import { TemplatesModule } from './templates/templates.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { RolesGuard } from './auth/roles.guard';
 
@@ -45,6 +47,7 @@ import { RolesGuard } from './auth/roles.guard';
           CreativeType,
           User,
           CampaignActual,
+          PlanTemplate,
         ],
         synchronize: true,
       }),
@@ -58,6 +61,7 @@ import { RolesGuard } from './auth/roles.guard';
     DashboardModule,
     ExportModule,
     ActualsModule,
+    TemplatesModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

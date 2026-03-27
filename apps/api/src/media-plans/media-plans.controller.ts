@@ -54,6 +54,37 @@ export class MediaPlansController {
     return this.mediaPlansService.updateStatus(id, status, req.user.role);
   }
 
+  @Post(':id/duplicate')
+  duplicate(@Param('id', ParseUUIDPipe) id: string) {
+    return this.mediaPlansService.duplicate(id);
+  }
+
+  @Post(':id/rows/bulk')
+  bulkUpdateRows(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body()
+    body: {
+      rows: Array<{
+        id: string;
+        platform?: string;
+        objective?: string;
+        audienceType?: string;
+        budget?: number;
+      }>;
+    },
+  ) {
+    return this.mediaPlansService.bulkUpdateRows(id, body.rows);
+  }
+
+  @Delete(':id/rows/bulk')
+  @HttpCode(200)
+  bulkDeleteRows(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('rowIds') rowIds: string[],
+  ) {
+    return this.mediaPlansService.bulkDeleteRows(id, rowIds);
+  }
+
   @Delete(':id')
   @Roles('admin')
   @HttpCode(204)

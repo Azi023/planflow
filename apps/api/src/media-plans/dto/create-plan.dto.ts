@@ -75,6 +75,10 @@ export class CreatePlanRowDto {
   @IsOptional()
   @IsString()
   audienceType?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }
 
 export class CreatePlanDto {
