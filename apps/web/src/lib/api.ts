@@ -456,3 +456,77 @@ export function rejectBenchmarkSuggestion(id: string): Promise<void> {
 export function fetchBenchmarkHistory(benchmarkId: string): Promise<BenchmarkHistoryEntry[]> {
   return request<BenchmarkHistoryEntry[]>(`/benchmarks/${benchmarkId}/history`);
 }
+
+// ── AI endpoints ───────────────────────────────────────────────────────────
+
+export interface BudgetSuggestPayload {
+  objective: string;
+  audienceType: string;
+  budget: number;
+  currency: string;
+  audienceDescription?: string;
+  campaignPeriod?: string;
+  clientIndustry?: string;
+  notes?: string;
+}
+
+export interface PlatformAllocation {
+  platform: string;
+  platformLabel: string;
+  objective: string;
+  audienceType: string;
+  budgetPct: number;
+  budgetAmount: number;
+  rationale: string;
+}
+
+export interface BudgetSuggestionResult {
+  summary: string;
+  allocations: PlatformAllocation[];
+  strategicNotes: string;
+  totalBudget: number;
+  currency: string;
+  generatedAt: string;
+}
+
+export interface SimilarCampaign {
+  planId: string;
+  campaignName: string;
+  clientName: string;
+  objective: string;
+  budget: number;
+  currency: string;
+  platforms: string[];
+  similarityReason: string;
+}
+
+export interface SimilarCampaignsResult {
+  campaigns: SimilarCampaign[];
+  insight: string;
+}
+
+export async function suggestBudget(
+  payload: BudgetSuggestPayload,
+): Promise<BudgetSuggestionResult> {
+  const res = await request<{ success: boolean; data: BudgetSuggestionResult }>(
+    '/ai/budget-suggest',
+    { method: 'POST', body: JSON.stringify(payload) },
+  );
+  return res.data;
+}
+
+export async function findSimilarCampaigns(payload: {
+  objective: string;
+  clientIndustry?: string;
+  budget?: number;
+  currency?: string;
+  audienceType?: string;
+  platforms?: string;
+  limit?: number;
+}): Promise<SimilarCampaignsResult> {
+  const res = await request<{ success: boolean; data: SimilarCampaignsResult }>(
+    '/ai/similar-campaigns',
+    { method: 'POST', body: JSON.stringify(payload) },
+  );
+  return res.data;
+}

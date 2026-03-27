@@ -4,14 +4,20 @@ interface StatCardProps {
   label: string;
   value: string | number;
   subtitle: string;
+  accent?: string;
 }
 
-function StatCard({ label, value, subtitle }: StatCardProps) {
+function StatCard({ label, value, subtitle, accent = '#1B84FF' }: StatCardProps) {
   return (
-    <div className="bg-white rounded-[8px] border border-[#E1E3EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)] px-6 py-5">
-      <p className="text-[11px] font-semibold text-[#99A1B7] uppercase tracking-wider mb-2">{label}</p>
-      <p className="text-2xl font-bold text-[#071437] leading-tight">{value}</p>
-      <p className="text-xs text-[#99A1B7] mt-1.5">{subtitle}</p>
+    <div className="card px-6 py-5 flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <p className="text-[11px] font-semibold text-[#99A1B7] uppercase tracking-wider">{label}</p>
+        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: accent }} />
+      </div>
+      <div>
+        <p className="text-[26px] font-bold text-[#071437] leading-tight tabular-nums">{value}</p>
+        <p className="text-[12px] text-[#99A1B7] mt-1">{subtitle}</p>
+      </div>
     </div>
   );
 }
@@ -45,21 +51,25 @@ export function DashboardStats({
         label="Total Clients"
         value={totalClients}
         subtitle={`${totalClients} active`}
+        accent="#1B84FF"
       />
       <StatCard
         label="Active Plans"
         value={totalPlans}
         subtitle={`${plansThisMonth} this month`}
+        accent="#17C653"
       />
       <StatCard
         label="Total Budget Allocated"
         value={`${currency} ${formatBudget(totalBudgetAllocated)}`}
         subtitle={`across ${totalPlans} plan${totalPlans !== 1 ? 's' : ''}`}
+        accent="#F6B100"
       />
       <StatCard
         label="Avg Plan Value"
         value={`${currency} ${formatBudget(avgPlanValue)}`}
         subtitle="per campaign"
+        accent="#7239EA"
       />
     </div>
   );

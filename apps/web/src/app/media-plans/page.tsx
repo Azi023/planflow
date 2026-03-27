@@ -6,6 +6,7 @@ import { fetchPlans, deletePlan, duplicatePlan } from '@/lib/api';
 import type { MediaPlan } from '@/lib/types';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { PageHeader } from '@/components/PageHeader';
 
 const PLANS_PER_PAGE = 20;
 
@@ -120,22 +121,23 @@ export default function PlansListPage() {
   };
 
   return (
-    <main className="max-w-[1280px] mx-auto px-8 py-8">
-      {/* Page header */}
-      <div className="flex items-start justify-between mb-7">
-        <div>
-          <h1 className="text-2xl font-semibold text-[#071437] leading-tight">Media Plans</h1>
-          <p className="text-sm text-[#99A1B7] mt-1">Manage and build client media plans</p>
-        </div>
-        <button
-          onClick={() => router.push('/media-plans/new')}
-          className="bg-[#1B84FF] text-white rounded-lg px-5 py-2.5 text-sm font-medium hover:bg-[#056EE9] transition-colors flex items-center gap-2 shadow-sm"
-        >
-          <span className="text-base leading-none">+</span>
-          New Plan
-        </button>
-      </div>
+    <>
+      <PageHeader
+        title="Media Plans"
+        subtitle="Manage and build client media plans"
+        breadcrumbs={[{ label: 'Home' }, { label: 'Media Plans' }]}
+        action={
+          <button
+            onClick={() => router.push('/media-plans/new')}
+            className="bg-[#1B84FF] text-white rounded-lg px-5 py-2.5 text-sm font-medium hover:bg-[#056EE9] transition-colors flex items-center gap-2 shadow-sm"
+          >
+            <span className="text-base leading-none">+</span>
+            New Plan
+          </button>
+        }
+      />
 
+      <div className="p-8">
       {/* Error */}
       {error && (
         <div className="bg-[#FFEEF3] border border-[#F8285A]/20 rounded-lg px-4 py-3 text-sm text-[#F8285A] mb-4">
@@ -144,7 +146,7 @@ export default function PlansListPage() {
       )}
 
       {/* Table card */}
-      <div className="bg-white rounded-[8px] border border-[#E1E3EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
+      <div className="card overflow-hidden">
         {/* Table header with search/filter */}
         <div className="px-6 py-4 border-b border-[#F1F1F4]">
           <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -329,6 +331,7 @@ export default function PlansListPage() {
           </div>
         )}
       </div>
-    </main>
+      </div>
+    </>
   );
 }

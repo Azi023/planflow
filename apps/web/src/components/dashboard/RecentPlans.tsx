@@ -57,7 +57,7 @@ export function RecentPlans({ plans, loading }: RecentPlansProps) {
   const router = useRouter();
 
   return (
-    <div className="bg-white rounded-[8px] border border-[#E1E3EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col">
+    <div className="card overflow-hidden flex flex-col">
       <div className="px-5 py-4 border-b border-[#F1F1F4] flex items-center justify-between">
         <p className="text-sm font-semibold text-[#071437]">Recent Plans</p>
       </div>

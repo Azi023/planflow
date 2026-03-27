@@ -28,6 +28,10 @@ export interface CalculatedKpis {
   ctr: KpiRange;
 }
 
+// Minimum number of actuals required before an auto-tune suggestion is generated.
+// Suggestions based on fewer data points would be statistically unreliable.
+const MIN_ACTUALS_FOR_SUGGESTION = 15;
+
 // Fields that can be auto-tuned (numeric, nullable)
 const TUNABLE_FIELDS: Array<keyof Benchmark> = [
   'cpmLow',
@@ -256,7 +260,7 @@ export class BenchmarksService {
       const cpmActuals = actuals.filter(
         (a) => a.actualCpm && Number(a.actualCpm) > 0,
       );
-      if (cpmActuals.length >= 1) {
+      if (cpmActuals.length >= MIN_ACTUALS_FOR_SUGGESTION) {
         const avgActualCpm =
           cpmActuals.reduce((s, a) => s + Number(a.actualCpm), 0) /
           cpmActuals.length;
@@ -312,7 +316,7 @@ export class BenchmarksService {
       const cpcActuals = actuals.filter(
         (a) => a.actualCpc && Number(a.actualCpc) > 0,
       );
-      if (cpcActuals.length >= 1) {
+      if (cpcActuals.length >= MIN_ACTUALS_FOR_SUGGESTION) {
         const avgActualCpc =
           cpcActuals.reduce((s, a) => s + Number(a.actualCpc), 0) /
           cpcActuals.length;

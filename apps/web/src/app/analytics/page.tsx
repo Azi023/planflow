@@ -20,6 +20,7 @@ import type {
 import { PLATFORM_LABEL, OBJECTIVE_LABEL } from '@/lib/types';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { Toast } from '@/components/Toast';
+import { PageHeader } from '@/components/PageHeader';
 
 // ─── Score → color mapping ──────────────────────────────────────────────────
 
@@ -375,7 +376,24 @@ export default function AnalyticsPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB]">
+    <>
+      <PageHeader
+        title="Benchmark Analytics"
+        subtitle="Accuracy of projections vs actuals · Click any cell for details"
+        breadcrumbs={[{ label: 'Home' }, { label: 'Analytics' }]}
+        action={
+          user?.role === 'admin' ? (
+            <button
+              onClick={handleComputeSuggestions}
+              className="text-sm font-medium px-4 py-2 bg-[#1B84FF] text-white rounded-lg hover:bg-[#056EE9] transition-colors"
+            >
+              Refresh Suggestions
+            </button>
+          ) : undefined
+        }
+      />
+
+      <div className="p-6 space-y-6">
       {toast && (
         <Toast
           message={toast.msg}
@@ -387,25 +405,6 @@ export default function AnalyticsPage() {
       {selectedCell && (
         <DetailPanel cell={selectedCell} onClose={() => setSelectedCell(null)} />
       )}
-
-      <div className="max-w-[1600px] mx-auto px-6 py-8 space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-[#071437]">Benchmark Analytics</h1>
-            <p className="text-sm text-[#99A1B7] mt-0.5">
-              Accuracy of projections vs actuals · Click any cell for details
-            </p>
-          </div>
-          {user?.role === 'admin' && (
-            <button
-              onClick={handleComputeSuggestions}
-              className="text-sm font-medium px-4 py-2 bg-[#1B84FF] text-white rounded-lg hover:bg-[#0571F0] transition-colors"
-            >
-              Refresh Suggestions
-            </button>
-          )}
-        </div>
 
         {/* Legend */}
         <div className="flex items-center gap-4 text-xs text-[#4B5675]">
@@ -435,6 +434,13 @@ export default function AnalyticsPage() {
             onAccept={handleAccept}
             onReject={handleReject}
           />
+        )}
+
+        {/* Insufficient data banner — shown when all cells are below the minimum sample threshold */}
+        {!loading && heatmap && suggestions.length === 0 && heatmap.cells.every((c) => c.sampleSize < 5) && (
+          <div className="bg-[#FFF8DD] border border-[#F6B100]/20 rounded-lg px-4 py-3 text-sm text-[#4B5675]">
+            <span className="font-medium text-[#F6B100]">Insufficient data</span> — Analytics accuracy improves as you log campaign actuals. Need 5+ actuals per platform/objective combination for heatmap scores, and 15+ for benchmark suggestions.
+          </div>
         )}
 
         {/* Heatmap */}
@@ -478,6 +484,21 @@ export default function AnalyticsPage() {
                           return (
                             <td key={objective} className="px-3 py-3 text-center">
                               <span className="text-[#CBD5E1] text-xs">—</span>
+                            </td>
+                          );
+                        }
+                        if (!cell.hasData) {
+                          return (
+                            <td key={objective} className="px-3 py-2 text-center">
+                              <button
+                                onClick={() => setSelectedCell(cell)}
+                                className="inline-flex flex-col items-center justify-center w-20 h-14 rounded-lg border border-[#E2E8F0] bg-[#F9F9F9] hover:shadow-sm transition-shadow cursor-pointer"
+                              >
+                                <span className="text-sm font-medium text-[#CBD5E1] leading-none">—</span>
+                                <span className="text-[10px] text-[#CBD5E1] mt-1">
+                                  {cell.sampleSize === 0 ? 'No data' : `n=${cell.sampleSize}`}
+                                </span>
+                              </button>
                             </td>
                           );
                         }
@@ -542,6 +563,6 @@ export default function AnalyticsPage() {
           </div>
         )}
       </div>
-    </div>
+    </>
   );
 }

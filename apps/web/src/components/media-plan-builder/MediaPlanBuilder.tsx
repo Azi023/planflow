@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { AiSuggestPanel } from '@/components/ai/AiSuggestPanel';
+import type { PlatformAllocation } from '@/lib/api';
 import {
   calculateKpis,
   fetchAudiences,
@@ -723,8 +725,11 @@ function SaveTemplateModal({ campaignName, onSave, onClose, isAdmin }: SaveTempl
 // ─── Period presets ───────────────────────────────────────────────────────────
 
 const PERIOD_PRESETS = [
+  { label: '1 Week', days: 7 },
   { label: '2 Weeks', days: 14 },
+  { label: '3 Weeks', days: 21 },
   { label: '1 Month', days: 30 },
+  { label: '6 Weeks', days: 42 },
   { label: '2 Months', days: 61 },
   { label: '3 Months', days: 91 },
   { label: '6 Months', days: 183 },
@@ -811,6 +816,7 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
   const [initialLoading, setInitialLoading] = useState(!!props.groupId);
   const [exportingExcel, setExportingExcel] = useState(false);
   const [exportingPptx, setExportingPptx] = useState(false);
+  const [showAiPanel, setShowAiPanel] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
 
   // Bulk row operations
@@ -1239,6 +1245,20 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
     })),
   });
 
+  function handleApplyAiSuggestion(allocations: PlatformAllocation[]) {
+    const newRows: PlanRow[] = allocations.map((a) => ({
+      ...emptyRow(),
+      platform: a.platform,
+      objective: (a.objective as PlanRow['objective']) || 'awareness',
+      audienceType: (a.audienceType as PlanRow['audienceType']) || 'mass',
+      budget: String(Math.round(a.budgetAmount)),
+      notes: a.rationale,
+    }));
+    setVariants((prev) =>
+      prev.map((v, i) => (i === activeIdx ? { ...v, rows: newRows } : v)),
+    );
+  }
+
   const handleExportExcel = async () => {
     const savedId = activeVariant.savedId;
     if (!savedId) return;
@@ -1265,6 +1285,10 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
     } finally {
       setExportingPptx(false);
     }
+  };
+
+  const handlePrint = () => {
+    window.print();
   };
 
   const handleSave = async () => {
@@ -1401,7 +1425,18 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
   }
 
   return (
-    <div className="bg-white rounded-[8px] border border-[#E1E3EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+    <>
+    {showAiPanel && (
+      <AiSuggestPanel
+        defaultBudget={Number(header.totalBudget) || 0}
+        defaultCurrency={header.currency || 'LKR'}
+        defaultObjective={activeVariant.rows[0]?.objective || 'awareness'}
+        defaultAudienceType={activeVariant.rows[0]?.audienceType || 'mass'}
+        onApply={handleApplyAiSuggestion}
+        onClose={() => setShowAiPanel(false)}
+      />
+    )}
+    <div data-print-content className="bg-white rounded-[8px] border border-[#E1E3EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
       {showTemplateModal && (
         <SaveTemplateModal
           campaignName={header.campaignName}
@@ -1421,7 +1456,7 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
 
       {/* Back to plans list */}
       {props.groupId && (
-        <div className="px-6 pt-4">
+        <div data-print-hide className="px-6 pt-4">
           <button
             onClick={() => router.push('/')}
             className="text-sm text-[#99A1B7] hover:text-[#1B84FF] flex items-center gap-1.5 transition-colors"
@@ -1952,7 +1987,19 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
           )}
 
           {/* Save + Export + Actions */}
-          <div className="flex items-center gap-3 flex-wrap">
+          <div data-print-hide className="flex items-center gap-3 flex-wrap">
+            {/* AI Suggest button */}
+            <button
+              onClick={() => setShowAiPanel(true)}
+              className="border border-[#7239EA]/30 text-[#7239EA] bg-[#F5F0FF] rounded-lg px-4 py-2.5 text-sm font-semibold hover:bg-[#EDE7FF] transition-colors flex items-center gap-1.5"
+              title="Get AI budget allocation suggestion"
+            >
+              <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+              </svg>
+              AI Suggest
+            </button>
+
             <button
               onClick={handleSave}
               disabled={saving}
@@ -2002,6 +2049,18 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
                     </svg>
                   )}
                   {exportingPptx ? 'Generating…' : 'Export PPTX'}
+                </button>
+                <button
+                  onClick={handlePrint}
+                  className="bg-white border border-[#4B5675] text-[#4B5675] rounded-lg px-4 py-2.5 text-sm font-semibold hover:bg-[#F9F9F9] active:bg-[#F1F1F4] transition-colors shadow-sm flex items-center gap-2"
+                  title="Print or save as PDF using browser print dialog"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="6 9 6 2 18 2 18 9"/>
+                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                    <rect x="6" y="14" width="12" height="8"/>
+                  </svg>
+                  Print / Save as PDF
                 </button>
                 <button
                   onClick={() => setShowTemplateModal(true)}
@@ -2088,5 +2147,6 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
         </div>
       )}
     </div>
+    </>
   );
 }

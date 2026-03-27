@@ -219,6 +219,7 @@ export interface HeatmapCell {
   score: number;
   sampleSize: number;
   trend: 'improving' | 'declining' | 'stable' | null;
+  hasData: boolean;
 }
 
 export interface AccuracyHeatmap {

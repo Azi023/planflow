@@ -7,6 +7,7 @@ import type { PlanTemplate } from '@/lib/api';
 import type { Client } from '@/lib/types';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { PLATFORMS } from '@/lib/types';
+import { PageHeader } from '@/components/PageHeader';
 
 const PLATFORM_LABEL: Record<string, string> = Object.fromEntries(
   PLATFORMS.map((p) => [p.value, p.label]),
@@ -327,7 +328,23 @@ export default function TemplatesPage() {
   const globalTemplates = templates.filter((t) => t.isGlobal && t.createdById !== currentUserId);
 
   return (
-    <main className="max-w-[1280px] mx-auto px-8 py-8">
+    <>
+      <PageHeader
+        title="Plan Templates"
+        subtitle="Reusable plan structures for faster media plan creation"
+        breadcrumbs={[{ label: 'Home' }, { label: 'Templates' }]}
+        action={
+          <button
+            onClick={() => router.push('/media-plans/new')}
+            className="bg-[#1B84FF] text-white rounded-lg px-5 py-2.5 text-sm font-medium hover:bg-[#056EE9] transition-colors flex items-center gap-2 shadow-sm"
+          >
+            <span className="text-base leading-none">+</span>
+            New Plan
+          </button>
+        }
+      />
+
+      <main className="p-8">
       {usingTemplate && (
         <UseTemplateModal
           template={usingTemplate}
@@ -339,21 +356,6 @@ export default function TemplatesPage() {
           }}
         />
       )}
-
-      {/* Header */}
-      <div className="flex items-start justify-between mb-7">
-        <div>
-          <h1 className="text-2xl font-semibold text-[#071437] leading-tight">Plan Templates</h1>
-          <p className="text-sm text-[#99A1B7] mt-1">Reusable plan structures for faster media plan creation</p>
-        </div>
-        <button
-          onClick={() => router.push('/media-plans/new')}
-          className="bg-[#1B84FF] text-white rounded-lg px-5 py-2.5 text-sm font-medium hover:bg-[#056EE9] transition-colors flex items-center gap-2 shadow-sm"
-        >
-          <span className="text-base leading-none">+</span>
-          New Plan
-        </button>
-      </div>
 
       {error && (
         <div className="bg-[#FFEEF3] border border-[#F8285A]/20 rounded-lg px-4 py-3 text-sm text-[#F8285A] mb-6">
@@ -425,6 +427,7 @@ export default function TemplatesPage() {
           )}
         </>
       )}
-    </main>
+      </main>
+    </>
   );
 }

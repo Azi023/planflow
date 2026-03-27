@@ -5,12 +5,16 @@ import { Benchmark } from '../entities/benchmark.entity';
 import { CampaignActual } from '../entities/campaign-actual.entity';
 import { MediaPlanRow } from '../entities/media-plan-row.entity';
 
+// Minimum number of actuals required before a heatmap cell is considered statistically meaningful
+const MIN_SAMPLES = 5;
+
 export interface HeatmapCell {
   platform: string;
   objective: string;
   score: number;
   sampleSize: number;
   trend: 'improving' | 'declining' | 'stable' | null;
+  hasData: boolean;
 }
 
 export interface AccuracyDetail {
@@ -45,8 +49,18 @@ export interface SeasonalAlert {
 }
 
 const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
 @Injectable()
@@ -82,7 +96,13 @@ export class AnalyticsService {
         where: { platform: combo.platform, objective: combo.objective },
       });
       if (!rows.length) {
-        cells.push({ ...combo, score: 0, sampleSize: 0, trend: null });
+        cells.push({
+          ...combo,
+          score: 0,
+          sampleSize: 0,
+          trend: null,
+          hasData: false,
+        });
         continue;
       }
 
@@ -94,7 +114,13 @@ export class AnalyticsService {
         .getMany();
 
       if (!actuals.length) {
-        cells.push({ ...combo, score: 0, sampleSize: 0, trend: null });
+        cells.push({
+          ...combo,
+          score: 0,
+          sampleSize: 0,
+          trend: null,
+          hasData: false,
+        });
         continue;
       }
 
@@ -124,11 +150,7 @@ export class AnalyticsService {
             Number(actual.actualImpressions),
           );
           scores.push(score);
-        } else if (
-          kpis.reach?.low &&
-          kpis.reach?.high &&
-          actual.actualReach
-        ) {
+        } else if (kpis.reach?.low && kpis.reach?.high && actual.actualReach) {
           const score = this.calcAccuracy(
             kpis.reach.low,
             kpis.reach.high,
@@ -139,11 +161,19 @@ export class AnalyticsService {
       }
 
       if (!scores.length) {
-        cells.push({ ...combo, score: 50, sampleSize: actuals.length, trend: null });
+        cells.push({
+          ...combo,
+          score: 50,
+          sampleSize: actuals.length,
+          trend: null,
+          hasData: actuals.length >= MIN_SAMPLES,
+        });
         continue;
       }
 
-      const avgScore = Math.round(scores.reduce((s, x) => s + x, 0) / scores.length);
+      const avgScore = Math.round(
+        scores.reduce((s, x) => s + x, 0) / scores.length,
+      );
 
       // Trend: compare first half vs second half
       let trend: 'improving' | 'declining' | 'stable' | null = null;
@@ -159,7 +189,13 @@ export class AnalyticsService {
         else trend = 'stable';
       }
 
-      cells.push({ ...combo, score: avgScore, sampleSize: scores.length, trend });
+      cells.push({
+        ...combo,
+        score: avgScore,
+        sampleSize: scores.length,
+        trend,
+        hasData: scores.length >= MIN_SAMPLES,
+      });
     }
 
     const platformSet = new Set(cells.map((c) => c.platform));
@@ -180,10 +216,18 @@ export class AnalyticsService {
       where: { platform, objective },
     });
 
-    const cpmLows = benchmarks.map((b) => Number(b.cpmLow)).filter((v) => v > 0);
-    const cpmHighs = benchmarks.map((b) => Number(b.cpmHigh)).filter((v) => v > 0);
-    const cpcLows = benchmarks.map((b) => Number(b.cpcLow)).filter((v) => v > 0);
-    const cpcHighs = benchmarks.map((b) => Number(b.cpcHigh)).filter((v) => v > 0);
+    const cpmLows = benchmarks
+      .map((b) => Number(b.cpmLow))
+      .filter((v) => v > 0);
+    const cpmHighs = benchmarks
+      .map((b) => Number(b.cpmHigh))
+      .filter((v) => v > 0);
+    const cpcLows = benchmarks
+      .map((b) => Number(b.cpcLow))
+      .filter((v) => v > 0);
+    const cpcHighs = benchmarks
+      .map((b) => Number(b.cpcHigh))
+      .filter((v) => v > 0);
 
     const benchmarkCpmLow = cpmLows.length
       ? cpmLows.reduce((s, x) => s + x, 0) / cpmLows.length
@@ -203,20 +247,28 @@ export class AnalyticsService {
       rows.length > 0
         ? await this.actualRepo
             .createQueryBuilder('a')
-            .where('a.row_id IN (:...rowIds)', { rowIds: rows.map((r) => r.id) })
+            .where('a.row_id IN (:...rowIds)', {
+              rowIds: rows.map((r) => r.id),
+            })
             .orderBy('a.created_at', 'DESC')
             .limit(50)
             .getMany()
         : [];
 
-    const cpmActuals = actuals.filter((a) => a.actualCpm && Number(a.actualCpm) > 0);
-    const cpcActuals = actuals.filter((a) => a.actualCpc && Number(a.actualCpc) > 0);
+    const cpmActuals = actuals.filter(
+      (a) => a.actualCpm && Number(a.actualCpm) > 0,
+    );
+    const cpcActuals = actuals.filter(
+      (a) => a.actualCpc && Number(a.actualCpc) > 0,
+    );
 
     const actualAvgCpm = cpmActuals.length
-      ? cpmActuals.reduce((s, a) => s + Number(a.actualCpm), 0) / cpmActuals.length
+      ? cpmActuals.reduce((s, a) => s + Number(a.actualCpm), 0) /
+        cpmActuals.length
       : null;
     const actualAvgCpc = cpcActuals.length
-      ? cpcActuals.reduce((s, a) => s + Number(a.actualCpc), 0) / cpcActuals.length
+      ? cpcActuals.reduce((s, a) => s + Number(a.actualCpc), 0) /
+        cpcActuals.length
       : null;
 
     let cpmDeviationPct: number | null = null;
@@ -274,12 +326,14 @@ export class AnalyticsService {
       .where('a.period_start IS NOT NULL')
       .andWhere('a.actual_cpm IS NOT NULL')
       .andWhere('CAST(a.actual_cpm AS FLOAT) > 0')
-      .groupBy('row.platform, row.objective, row.audience_type, EXTRACT(MONTH FROM a.period_start)');
+      .groupBy(
+        'row.platform, row.objective, row.audience_type, EXTRACT(MONTH FROM a.period_start)',
+      );
 
     if (platform) qb.andWhere('row.platform = :platform', { platform });
     if (objective) qb.andWhere('row.objective = :objective', { objective });
 
-    const monthlyData = await qb.getRawMany() as Array<{
+    const monthlyData = (await qb.getRawMany()) as Array<{
       platform: string;
       objective: string;
       audience_type: string;
@@ -317,6 +371,11 @@ export class AnalyticsService {
       const totalCount = entries.reduce((s, e) => s + e.count, 0);
       const annualAvg = totalCount > 0 ? totalCpm / totalCount : null;
 
+      // Data gating: require at least 10 total actuals AND data from at least 3 distinct months
+      // to avoid misleading seasonal alerts from sparse data
+      const distinctMonthCount = entries.length;
+      if (totalCount < 10 || distinctMonthCount < 3) continue;
+
       // Get current month average
       const currentEntry = entries.find((e) => e.month === currentMonth);
       const currentMonthAvg = currentEntry?.avgCpm ?? null;
@@ -346,8 +405,18 @@ export class AnalyticsService {
     return alerts;
   }
 
-  async getMonthlyTrend(platform: string, objective: string): Promise<
-    Array<{ month: number; monthName: string; avgCpm: number | null; count: number }>
+  // Note: Monthly trend data requires at least 3 distinct months to be statistically meaningful.
+  // The caller should check rows.length >= 3 before drawing trend conclusions.
+  async getMonthlyTrend(
+    platform: string,
+    objective: string,
+  ): Promise<
+    Array<{
+      month: number;
+      monthName: string;
+      avgCpm: number | null;
+      count: number;
+    }>
   > {
     const qb = this.actualRepo
       .createQueryBuilder('a')
@@ -365,7 +434,7 @@ export class AnalyticsService {
       .groupBy('EXTRACT(MONTH FROM a.period_start)')
       .orderBy('month', 'ASC');
 
-    const rows = await qb.getRawMany() as Array<{
+    const rows = (await qb.getRawMany()) as Array<{
       month: string;
       avg_cpm: string;
       cnt: string;

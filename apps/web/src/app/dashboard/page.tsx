@@ -6,6 +6,7 @@ import { fetchDashboardStats } from '@/lib/api';
 import { DashboardStats } from '@/components/dashboard/DashboardStats';
 import { RecentPlans } from '@/components/dashboard/RecentPlans';
 import { ClientOverview } from '@/components/dashboard/ClientOverview';
+import { PageHeader } from '@/components/PageHeader';
 
 interface RecentPlan {
   id: string;
@@ -96,7 +97,7 @@ function PlatformBreakdown({ items, loading }: { items: PlatformBreakdownItem[];
   };
 
   return (
-    <div className="bg-white rounded-[8px] border border-[#E1E3EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)] px-6 py-5">
+    <div className="card px-6 py-5">
       <p className="text-sm font-semibold text-[#071437] mb-5">Platform Budget Breakdown</p>
 
       {loading && (
@@ -167,7 +168,7 @@ function CampaignPerformance({
   loading: boolean;
 }) {
   return (
-    <div className="bg-white rounded-[8px] border border-[#E1E3EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)] px-6 py-5">
+    <div className="card px-6 py-5">
       <p className="text-sm font-semibold text-[#071437] mb-4">Campaign Performance</p>
 
       {loading && (
@@ -261,21 +262,29 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <main className="max-w-[1280px] mx-auto px-8 py-8">
-      {/* Page header */}
-      <div className="mb-7">
-        <h1 className="text-2xl font-semibold text-[#071437] leading-tight">Dashboard</h1>
-        <p className="text-sm text-[#99A1B7] mt-1">Overview of your media planning activity</p>
-      </div>
+    <>
+      <PageHeader
+        title="Dashboard"
+        subtitle="Overview of your media planning activity"
+        breadcrumbs={[{ label: 'Home' }, { label: 'Dashboard' }]}
+        action={
+          <Link
+            href="/media-plans/new"
+            className="inline-flex items-center gap-2 bg-[#1B84FF] hover:bg-[#056EE9] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+          >
+            + New Plan
+          </Link>
+        }
+      />
 
-      {error && (
-        <div className="bg-[#FFEEF3] border border-[#F8285A]/20 rounded-lg px-4 py-3 text-sm text-[#F8285A] mb-6">
-          {error}
-        </div>
-      )}
+      <div className="p-8 space-y-6">
+        {error && (
+          <div className="bg-[#FFEEF3] border border-[#F8285A]/20 rounded-lg px-4 py-3 text-sm text-[#F8285A]">
+            {error}
+          </div>
+        )}
 
-      {/* Stat cards */}
-      <div className="mb-6">
+        {/* Stat cards */}
         <DashboardStats
           totalClients={data?.totalClients ?? 0}
           totalPlans={data?.totalPlans ?? 0}
@@ -283,25 +292,23 @@ export default function DashboardPage() {
           totalBudgetAllocated={data?.totalBudgetAllocated ?? 0}
           currency={data?.currency ?? 'LKR'}
         />
-      </div>
 
-      {/* Middle: recent plans + client overview */}
-      <div className="grid grid-cols-5 gap-5 mb-6">
-        <div className="col-span-3">
-          <RecentPlans plans={data?.recentPlans ?? []} loading={loading} />
+        {/* Recent plans + client overview */}
+        <div className="grid grid-cols-5 gap-5">
+          <div className="col-span-3">
+            <RecentPlans plans={data?.recentPlans ?? []} loading={loading} />
+          </div>
+          <div className="col-span-2">
+            <ClientOverview clients={data?.clientSummary ?? []} loading={loading} />
+          </div>
         </div>
-        <div className="col-span-2">
-          <ClientOverview clients={data?.clientSummary ?? []} loading={loading} />
+
+        {/* Platform breakdown + Campaign performance */}
+        <div className="grid grid-cols-2 gap-5">
+          <PlatformBreakdown items={data?.platformBreakdown ?? []} loading={loading} />
+          <CampaignPerformance items={data?.campaignDelivery ?? []} loading={loading} />
         </div>
       </div>
-
-      {/* Platform breakdown */}
-      <PlatformBreakdown items={data?.platformBreakdown ?? []} loading={loading} />
-
-      {/* Campaign performance */}
-      <div className="mt-6">
-        <CampaignPerformance items={data?.campaignDelivery ?? []} loading={loading} />
-      </div>
-    </main>
+    </>
   );
 }
