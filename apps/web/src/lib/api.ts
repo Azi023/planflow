@@ -110,6 +110,13 @@ export function deletePlan(id: string): Promise<void> {
   return request<void>(`/media-plans/${id}`, { method: 'DELETE' });
 }
 
+export function updatePlanStatus(id: string, status: string): Promise<MediaPlan> {
+  return request<MediaPlan>(`/media-plans/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+}
+
 export function fetchPlanGroup(groupId: string): Promise<MediaPlan[]> {
   return request<MediaPlan[]>(`/media-plans/group/${groupId}`);
 }
@@ -155,6 +162,37 @@ async function downloadExport(path: string, filename: string): Promise<void> {
 
 export function exportPlanExcel(planId: string, filename: string): Promise<void> {
   return downloadExport(`/media-plans/${planId}/export/excel`, filename);
+}
+
+export async function importBenchmarksCsv(
+  file: File,
+): Promise<{ imported: number; updated: number }> {
+  const token =
+    typeof window !== 'undefined' ? localStorage.getItem('planflow_token') : null;
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const res = await fetch(`${BASE}/benchmarks/import`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+  if (res.status === 401) {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('planflow_token');
+      localStorage.removeItem('planflow_user');
+      window.location.href = '/login';
+    }
+    throw new Error('Unauthorized');
+  }
+  if (!res.ok) {
+    const msg = await res.text().catch(() => res.statusText);
+    throw new Error(`Import failed: ${msg}`);
+  }
+  return res.json() as Promise<{ imported: number; updated: number }>;
 }
 
 export function exportPlanPptx(planId: string, filename: string): Promise<void> {

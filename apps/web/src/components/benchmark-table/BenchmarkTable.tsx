@@ -1,10 +1,12 @@
 'use client';
 
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
-import { fetchBenchmarks, updateBenchmark } from '@/lib/api';
+import { fetchBenchmarks, updateBenchmark, importBenchmarksCsv } from '@/lib/api';
 import type { AudienceType, Benchmark, Objective } from '@/lib/types';
 import { OBJECTIVE_LABEL, PLATFORM_LABEL } from '@/lib/types';
 import { fmtBenchmarkRange, fmtCost } from '@/lib/format';
+import { Toast } from '@/components/Toast';
+import { useAuth } from '@/components/auth/AuthProvider';
 
 // ─── Column definitions ───────────────────────────────────────────────────────
 
@@ -42,10 +44,11 @@ interface EditRangeCellProps {
   hiVal: number | string | null;
   decimals: number;
   isCtr?: boolean;
+  editable?: boolean;
   onSave: (lo: string, hi: string) => void;
 }
 
-function EditRangeCell({ loVal, hiVal, decimals, isCtr = false, onSave }: EditRangeCellProps) {
+function EditRangeCell({ loVal, hiVal, decimals, isCtr = false, editable = true, onSave }: EditRangeCellProps) {
   const [editing, setEditing] = useState(false);
   const [draftLo, setDraftLo] = useState('');
   const [draftHi, setDraftHi] = useState('');
@@ -72,9 +75,9 @@ function EditRangeCell({ loVal, hiVal, decimals, isCtr = false, onSave }: EditRa
   if (!editing) {
     return (
       <span
-        className="cursor-pointer px-1.5 py-0.5 rounded hover:bg-[#EEF6FF] inline-block min-w-[48px] min-h-[20px] tabular-nums"
-        onDoubleClick={startEdit}
-        title="Double-click to edit (raw values)"
+        className={`px-1.5 py-0.5 rounded inline-block min-w-[48px] min-h-[20px] tabular-nums ${editable ? 'cursor-pointer hover:bg-[#EEF6FF]' : 'cursor-default'}`}
+        onDoubleClick={editable ? startEdit : undefined}
+        title={editable ? 'Double-click to edit (raw values)' : undefined}
       >
         {display === '—' ? <span className="text-[#C9CDDA] text-xs">—</span> : display}
       </span>
@@ -115,7 +118,7 @@ function EditRangeCell({ loVal, hiVal, decimals, isCtr = false, onSave }: EditRa
 
 // ─── EditTextCell ─────────────────────────────────────────────────────────────
 
-function EditTextCell({ value, onSave }: { value: string | null; onSave: (v: string) => void }) {
+function EditTextCell({ value, editable = true, onSave }: { value: string | null; editable?: boolean; onSave: (v: string) => void }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value ?? '');
   const ref = useRef<HTMLInputElement>(null);
@@ -132,9 +135,9 @@ function EditTextCell({ value, onSave }: { value: string | null; onSave: (v: str
   if (!editing) {
     return (
       <span
-        className="cursor-pointer px-1.5 py-0.5 rounded hover:bg-[#EEF6FF] inline-block min-w-[36px] min-h-[20px]"
-        onDoubleClick={() => { setDraft(value ?? ''); setEditing(true); }}
-        title="Double-click to edit"
+        className={`px-1.5 py-0.5 rounded inline-block min-w-[36px] min-h-[20px] ${editable ? 'cursor-pointer hover:bg-[#EEF6FF]' : 'cursor-default'}`}
+        onDoubleClick={editable ? () => { setDraft(value ?? ''); setEditing(true); } : undefined}
+        title={editable ? 'Double-click to edit' : undefined}
       >
         {display === '—' ? <span className="text-[#C9CDDA] text-xs">—</span> : display}
       </span>
@@ -168,10 +171,15 @@ const OBJECTIVE_ACCENT: Record<Objective, { border: string; bg: string; text: st
 };
 
 export default function BenchmarkTable() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [audienceType, setAudienceType] = useState<AudienceType>('mass');
   const [rows, setRows] = useState<Benchmark[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -196,6 +204,9 @@ export default function BenchmarkTable() {
           [hiKey]: !rawHi || isNaN(hi as number) ? null : hi,
         });
         setRows((prev) => prev.map((r) => (r.id === id ? updated : r)));
+        setToast({ message: 'Benchmark updated', type: 'success' });
+      } catch {
+        setToast({ message: 'Update failed', type: 'error' });
       } finally {
         setSaving(null);
       }
@@ -209,12 +220,73 @@ export default function BenchmarkTable() {
       try {
         const updated = await updateBenchmark(id, { [field]: val || null });
         setRows((prev) => prev.map((r) => (r.id === id ? updated : r)));
+        setToast({ message: 'Benchmark updated', type: 'success' });
+      } catch {
+        setToast({ message: 'Update failed', type: 'error' });
       } finally {
         setSaving(null);
       }
     },
     [],
   );
+
+  const handleImportCsv = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    try {
+      const result = await importBenchmarksCsv(file);
+      await load();
+      setToast({
+        message: `Import complete: ${result.imported} added, ${result.updated} updated`,
+        type: 'success',
+      });
+    } catch (err) {
+      setToast({ message: err instanceof Error ? err.message : 'Import failed', type: 'error' });
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleExportCsv = () => {
+    const HEADERS = [
+      'audience_type', 'objective', 'platform',
+      'cpm_low', 'cpm_high', 'cpr_low', 'cpr_high',
+      'cpe_low', 'cpe_high', 'cpc_low', 'cpc_high',
+      'ctr_low', 'ctr_high', 'cpv_2s_low', 'cpv_2s_high',
+      'cpv_tv_low', 'cpv_tv_high', 'cplv_low', 'cplv_high',
+      'cpl_low', 'cpl_high', 'page_like_low', 'page_like_high',
+      'currency', 'min_duration', 'min_daily_budget', 'frequency',
+    ];
+    const csvRows = [HEADERS.join(',')];
+    for (const r of rows) {
+      const cols = [
+        r.audienceType, r.objective, r.platform,
+        r.cpmLow ?? '', r.cpmHigh ?? '',
+        r.cprLow ?? '', r.cprHigh ?? '',
+        r.cpeLow ?? '', r.cpeHigh ?? '',
+        r.cpcLow ?? '', r.cpcHigh ?? '',
+        r.ctrLow ?? '', r.ctrHigh ?? '',
+        r.cpv2sLow ?? '', r.cpv2sHigh ?? '',
+        r.cpvTvLow ?? '', r.cpvTvHigh ?? '',
+        r.cplvLow ?? '', r.cplvHigh ?? '',
+        r.cplLow ?? '', r.cplHigh ?? '',
+        r.pageLikeLow ?? '', r.pageLikeHigh ?? '',
+        r.currency, r.minDuration ?? '', r.minDailyBudget ?? '', r.frequency ?? '',
+      ];
+      csvRows.push(cols.join(','));
+    }
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `benchmarks-${audienceType}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   const grouped = OBJECTIVES_ORDER.map((obj) => ({
     objective: obj,
@@ -223,15 +295,29 @@ export default function BenchmarkTable() {
 
   return (
     <div className="bg-white rounded-[8px] border border-[#E1E3EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
+      )}
+      {/* Hidden file input for CSV import */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".csv"
+        className="hidden"
+        onChange={handleImportCsv}
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-[#F1F1F4]">
         <div>
           <h2 className="text-base font-semibold text-[#071437]">KPI Benchmarks</h2>
           <p className="text-xs text-[#99A1B7] mt-0.5">
-            Double-click any value to edit · CTR shown as % · CPV/CPM/CPC in platform currency
+            {isAdmin
+              ? 'Double-click any value to edit · CTR shown as % · CPV/CPM/CPC in platform currency'
+              : 'Read-only · CTR shown as % · CPV/CPM/CPC in platform currency'}
           </p>
         </div>
-        <div className="flex items-center gap-5">
+        <div className="flex items-center gap-3">
           <div className="flex gap-3 text-xs text-[#99A1B7]">
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-[#EEF6FF] border border-[#1B84FF]/40" />LKR
@@ -240,6 +326,23 @@ export default function BenchmarkTable() {
               <span className="w-2 h-2 rounded-full bg-[#FFF8DD] border border-[#F6B100]/40" />USD
             </span>
           </div>
+          {isAdmin && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleExportCsv}
+                className="bg-white border border-[#E1E3EA] rounded-lg px-3 py-1.5 text-xs font-medium text-[#4B5675] hover:bg-[#F9F9F9] transition-colors"
+              >
+                Export CSV
+              </button>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={importing}
+                className="bg-white border border-[#E1E3EA] rounded-lg px-3 py-1.5 text-xs font-medium text-[#4B5675] hover:bg-[#F9F9F9] transition-colors disabled:opacity-60"
+              >
+                {importing ? 'Importing…' : 'Import CSV'}
+              </button>
+            </div>
+          )}
           {/* Pill toggle */}
           <div className="flex rounded-lg border border-[#E1E3EA] overflow-hidden bg-[#F9F9F9]">
             {(['mass', 'niche'] as const).map((t) => (
@@ -347,6 +450,7 @@ export default function BenchmarkTable() {
                               <td key={`${row.id}-freq`} className="px-2 py-1.5 text-center text-[#4B5675]">
                                 <EditTextCell
                                   value={row.frequency}
+                                  editable={isAdmin}
                                   onSave={(val) => handleTextSave(row.id, 'frequency', val)}
                                 />
                               </td>
@@ -364,6 +468,7 @@ export default function BenchmarkTable() {
                                 hiVal={row[hiKey] as number | string | null}
                                 decimals={m.decimals}
                                 isCtr={isCtr}
+                                editable={isAdmin}
                                 onSave={(lo, hi) =>
                                   handleRangeSave(
                                     row.id,

@@ -13,7 +13,10 @@ import {
   fetchPlanGroup,
   exportPlanExcel,
   exportPlanPptx,
+  updatePlanStatus,
 } from '@/lib/api';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { StatusBadge } from '@/components/StatusBadge';
 import type {
   Audience,
   AudienceType,
@@ -28,6 +31,7 @@ import type {
 import { OBJECTIVES, PLATFORMS } from '@/lib/types';
 import {
   fmtNum,
+  fmtKpi,
   fmtKpiRange,
   fullRange,
   fmtFreqRange,
@@ -76,6 +80,7 @@ interface PlanVariant {
   savedId: string | null;
   referenceNumber: string | null;
   variantGroupId?: string | null;
+  status: string;
 }
 
 interface PlanHeader {
@@ -232,6 +237,17 @@ function PlanRowItem({
     return content;
   };
 
+  const optionCCell = (range: { low: number | null; high: number | null }) => (
+    <div>
+      <span className="font-semibold tabular-nums">{fmtKpi(range.low)}</span>
+      {range.high != null && range.high !== range.low && (
+        <span className="block text-[9px] text-[#99A1B7] tabular-nums leading-tight">
+          {fmtKpiRange(range.low, range.high)}
+        </span>
+      )}
+    </div>
+  );
+
   const firstKpiContent = () => {
     if (row.loading) return <span className="text-[#1B84FF]">…</span>;
     if (row.currencyMismatch) {
@@ -248,8 +264,8 @@ function PlanRowItem({
       return <span className="text-[#99A1B7] italic text-[10px]">No benchmark data</span>;
     }
     return kpi ? (
-      <span title={fullRange(kpi.impressions.low, kpi.impressions.high)} className="tabular-nums">
-        {fmtKpiRange(kpi.impressions.low, kpi.impressions.high)}
+      <span title={fullRange(kpi.impressions.low, kpi.impressions.high)}>
+        {optionCCell(kpi.impressions)}
       </span>
     ) : '—';
   };
@@ -407,7 +423,7 @@ function PlanRowItem({
         {kpiCell(
           kpi ? (
             <span title={fullRange(kpi.reach.low, kpi.reach.high)}>
-              {fmtKpiRange(kpi.reach.low, kpi.reach.high)}
+              {optionCCell(kpi.reach)}
             </span>
           ) : '—',
         )}
@@ -421,7 +437,7 @@ function PlanRowItem({
         {kpiCell(
           kpi ? (
             <span title={fullRange(kpi.clicks.low, kpi.clicks.high)}>
-              {fmtKpiRange(kpi.clicks.low, kpi.clicks.high)}
+              {optionCCell(kpi.clicks)}
             </span>
           ) : '—',
         )}
@@ -444,7 +460,7 @@ function PlanRowItem({
         {kpiCell(
           kpi ? (
             <span title={fullRange(kpi.videoViews2s.low, kpi.videoViews2s.high)}>
-              {fmtKpiRange(kpi.videoViews2s.low, kpi.videoViews2s.high)}
+              {optionCCell(kpi.videoViews2s)}
             </span>
           ) : '—',
         )}
@@ -454,7 +470,7 @@ function PlanRowItem({
         {kpiCell(
           kpi ? (
             <span title={fullRange(kpi.leads.low, kpi.leads.high)}>
-              {fmtKpiRange(kpi.leads.low, kpi.leads.high)}
+              {optionCCell(kpi.leads)}
             </span>
           ) : '—',
         )}
@@ -477,13 +493,14 @@ function PlanRowItem({
 
 export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
   const router = useRouter();
+  const { user } = useAuth();
   const [open, setOpen] = useState(true);
   const [clients, setClients] = useState<Client[]>([]);
   const [audiences, setAudiences] = useState<Audience[]>([]);
   const [creativeTypes, setCreativeTypes] = useState<CreativeType[]>([]);
   const [header, setHeader] = useState<PlanHeader>(defaultHeader);
   const [variants, setVariants] = useState<PlanVariant[]>([
-    { name: 'Option 1', rows: [emptyRow()], savedId: null, referenceNumber: null },
+    { name: 'Option 1', rows: [emptyRow()], savedId: null, referenceNumber: null, status: 'draft' },
   ]);
   const [activeIdx, setActiveIdx] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -538,6 +555,7 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
             savedId: p.id,
             referenceNumber: p.referenceNumber ?? null,
             variantGroupId: p.variantGroupId,
+            status: p.status ?? 'draft',
           })),
         );
       })
@@ -690,6 +708,7 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
       savedId: null,
       referenceNumber: null,
       variantGroupId: groupId,
+      status: 'draft',
     };
     setVariants((vs) => [...vs, newVariant]);
     setActiveIdx(variants.length);
@@ -831,6 +850,7 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
                 savedId: result.id,
                 referenceNumber: result.referenceNumber ?? null,
                 variantGroupId: newGroupId,
+                status: result.status ?? v.status,
               }
             : v,
         ),
@@ -846,6 +866,22 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
       setSaveMsg(e instanceof Error ? e.message : 'Save failed');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // ─── Status workflow ──────────────────────────────────────────────────────
+
+  const handleStatusChange = async (newStatus: string) => {
+    const savedId = activeVariant.savedId;
+    if (!savedId) return;
+    try {
+      const result = await updatePlanStatus(savedId, newStatus);
+      setVariants((vs) =>
+        vs.map((v, i) => (i === activeIdx ? { ...v, status: result.status } : v)),
+      );
+    } catch (e) {
+      setSaveMsg(e instanceof Error ? e.message : 'Status update failed');
+      setTimeout(() => setSaveMsg(''), 3000);
     }
   };
 
@@ -1130,11 +1166,18 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
             </div>
           </div>
 
-          {/* Reference number display */}
-          {activeVariant.savedId && activeVariant.referenceNumber && (
-            <div className="text-xs text-[#99A1B7] flex items-center gap-1.5">
-              <span>Ref:</span>
-              <span className="font-mono font-semibold text-[#4B5675] bg-[#F9F9F9] border border-[#E1E3EA] rounded px-1.5 py-0.5">{activeVariant.referenceNumber}</span>
+          {/* Reference number + status display */}
+          {activeVariant.savedId && (
+            <div className="flex items-center gap-3 flex-wrap">
+              {activeVariant.referenceNumber && (
+                <div className="text-xs text-[#99A1B7] flex items-center gap-1.5">
+                  <span>Ref:</span>
+                  <span className="font-mono font-semibold text-[#4B5675] bg-[#F9F9F9] border border-[#E1E3EA] rounded px-1.5 py-0.5">
+                    {activeVariant.referenceNumber}
+                  </span>
+                </div>
+              )}
+              <StatusBadge status={activeVariant.status} />
             </div>
           )}
 
@@ -1228,14 +1271,14 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
             />
             <SummaryCard
               label="Total Reach (est.)"
-              value={fmtKpiRange(totalReach.low, totalReach.high)}
-              sub={fullRange(totalReach.low, totalReach.high) || undefined}
+              value={totalReach.low ? fmtKpi(totalReach.low) : '—'}
+              sub={totalReach.low && totalReach.high ? `Range: ${fmtKpiRange(totalReach.low, totalReach.high)}` : undefined}
               accent="#17C653"
             />
             <SummaryCard
               label="Total Impressions (est.)"
-              value={fmtKpiRange(totalImpressions.low, totalImpressions.high)}
-              sub={fullRange(totalImpressions.low, totalImpressions.high) || undefined}
+              value={totalImpressions.low ? fmtKpi(totalImpressions.low) : '—'}
+              sub={totalImpressions.low && totalImpressions.high ? `Range: ${fmtKpiRange(totalImpressions.low, totalImpressions.high)}` : undefined}
               accent="#7239EA"
             />
             <SummaryCard
@@ -1311,6 +1354,49 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
                 </button>
               </>
             )}
+            {/* Status workflow buttons */}
+            {activeVariant.savedId && (() => {
+              const status = activeVariant.status;
+              return (
+                <>
+                  {status === 'draft' && (
+                    <button
+                      onClick={() => handleStatusChange('pending_review')}
+                      className="bg-[#FFF8DD] border border-[#F6B100]/30 text-[#B07D00] rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-[#FFF0AA] transition-colors"
+                    >
+                      Submit for Review
+                    </button>
+                  )}
+                  {status === 'pending_review' && (
+                    <>
+                      {user?.role === 'admin' && (
+                        <button
+                          onClick={() => handleStatusChange('approved')}
+                          className="bg-[#DFFFEA] border border-[#17C653]/30 text-[#0F8A3C] rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-[#C0F5D0] transition-colors"
+                        >
+                          Approve
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleStatusChange('draft')}
+                        className="bg-white border border-[#E1E3EA] text-[#4B5675] rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-[#F9F9F9] transition-colors"
+                      >
+                        Return to Draft
+                      </button>
+                    </>
+                  )}
+                  {status === 'approved' &&
+                    (user?.role === 'admin' || user?.role === 'account_manager') && (
+                      <button
+                        onClick={() => handleStatusChange('sent')}
+                        className="bg-[#EEF6FF] border border-[#1B84FF]/30 text-[#1B84FF] rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-[#D8ECFF] transition-colors"
+                      >
+                        Mark as Sent
+                      </button>
+                    )}
+                </>
+              );
+            })()}
             {saveMsg && (
               <span
                 className={`text-sm font-medium ${saveMsg === 'Saved!' ? 'text-[#17C653]' : 'text-[#F8285A]'}`}

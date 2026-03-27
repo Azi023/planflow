@@ -1,6 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Like, Repository } from 'typeorm';
 import { MediaPlan } from '../entities/media-plan.entity';
 import { MediaPlanRow } from '../entities/media-plan-row.entity';
 import { Benchmark } from '../entities/benchmark.entity';
@@ -58,6 +63,17 @@ export class MediaPlansService {
     });
     const saved = await this.planRepo.save(plan);
 
+    // Auto-generate reference number if not provided
+    if (!saved.referenceNumber) {
+      const year = new Date().getFullYear();
+      const count = await this.planRepo.count({
+        where: { referenceNumber: Like(`JM-${year}-%`) },
+      });
+      await this.planRepo.update(saved.id, {
+        referenceNumber: `JM-${year}-${String(count + 1).padStart(3, '0')}`,
+      });
+    }
+
     // If no variantGroupId provided, use own id as group
     if (!dto.variantGroupId) {
       await this.planRepo.update(saved.id, { variantGroupId: saved.id });
@@ -110,6 +126,43 @@ export class MediaPlansService {
   async delete(id: string): Promise<void> {
     await this.findOne(id);
     await this.planRepo.delete(id);
+  }
+
+  async updateStatus(
+    id: string,
+    newStatus: string,
+    userRole: string,
+  ): Promise<MediaPlan> {
+    const plan = await this.findOne(id);
+    const current = plan.status;
+
+    const validTransitions: Record<string, string[]> = {
+      draft: ['pending_review'],
+      pending_review: ['draft', 'approved'],
+      approved: ['sent'],
+      sent: [],
+    };
+
+    if (!validTransitions[current]?.includes(newStatus)) {
+      throw new BadRequestException(
+        `Invalid status transition: ${current} → ${newStatus}`,
+      );
+    }
+
+    if (newStatus === 'approved' && userRole !== 'admin') {
+      throw new ForbiddenException('Only admins can approve plans');
+    }
+    if (
+      newStatus === 'sent' &&
+      !['admin', 'account_manager'].includes(userRole)
+    ) {
+      throw new ForbiddenException(
+        'Only admins and account managers can mark plans as sent',
+      );
+    }
+
+    await this.planRepo.update(id, { status: newStatus });
+    return this.findOne(id);
   }
 
   findByGroup(groupId: string): Promise<MediaPlan[]> {

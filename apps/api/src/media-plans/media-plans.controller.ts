@@ -6,12 +6,15 @@ import {
   HttpCode,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Put,
+  Req,
 } from '@nestjs/common';
 import { MediaPlansService } from './media-plans.service';
 import { CreatePlanDto } from './dto/create-plan.dto';
 import { MediaPlan } from '../entities/media-plan.entity';
+import { Roles } from '../auth/roles.decorator';
 
 @Controller('media-plans')
 export class MediaPlansController {
@@ -42,7 +45,17 @@ export class MediaPlansController {
     return this.mediaPlansService.update(id, dto);
   }
 
+  @Patch(':id/status')
+  updateStatus(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('status') status: string,
+    @Req() req: { user: { role: string } },
+  ) {
+    return this.mediaPlansService.updateStatus(id, status, req.user.role);
+  }
+
   @Delete(':id')
+  @Roles('admin')
   @HttpCode(204)
   delete(@Param('id', ParseUUIDPipe) id: string) {
     return this.mediaPlansService.delete(id);

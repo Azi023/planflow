@@ -4,29 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { fetchPlans, deletePlan } from '@/lib/api';
 import type { MediaPlan } from '@/lib/types';
-
-function StatusBadge({ status }: { status: string | null | undefined }) {
-  const s = status ?? 'draft';
-  if (s === 'sent') {
-    return (
-      <span className="inline-flex items-center px-2.5 py-0.5 rounded text-[11px] font-semibold bg-[#DFFFEA] text-[#17C653] border border-[#17C653]/20">
-        Sent
-      </span>
-    );
-  }
-  if (s === 'saved') {
-    return (
-      <span className="inline-flex items-center px-2.5 py-0.5 rounded text-[11px] font-semibold bg-[#EEF6FF] text-[#1B84FF] border border-[#1B84FF]/20">
-        Saved
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center px-2.5 py-0.5 rounded text-[11px] font-semibold bg-[#F9F9F9] text-[#99A1B7] border border-[#E1E3EA]">
-      Draft
-    </span>
-  );
-}
+import { StatusBadge } from '@/components/StatusBadge';
+import { useAuth } from '@/components/auth/AuthProvider';
 
 function SkeletonRow() {
   return (
@@ -42,9 +21,11 @@ function SkeletonRow() {
 
 export default function PlansListPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [plans, setPlans] = useState<MediaPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const isAdmin = user?.role === 'admin';
 
   useEffect(() => {
     fetchPlans()
@@ -184,13 +165,17 @@ export default function PlansListPage() {
                       >
                         Edit
                       </button>
-                      <span className="text-[#E1E3EA]">·</span>
-                      <button
-                        onClick={(e) => handleDelete(plan, e)}
-                        className="text-[#99A1B7] hover:text-[#F8285A] text-xs transition-colors"
-                      >
-                        Delete
-                      </button>
+                      {isAdmin && (
+                        <>
+                          <span className="text-[#E1E3EA]">·</span>
+                          <button
+                            onClick={(e) => handleDelete(plan, e)}
+                            className="text-[#99A1B7] hover:text-[#F8285A] text-xs transition-colors"
+                          >
+                            Delete
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>

@@ -162,6 +162,9 @@ export async function buildExcelBuffer(
     };
   });
 
+  // Freeze panes — keep agency header + column headers visible when scrolling
+  ws.views = [{ state: 'frozen', ySplit: 6 }];
+
   // ── Data rows ─────────────────────────────────────────────────────────────
   let budgetTotal = 0;
 
