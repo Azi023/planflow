@@ -15,13 +15,18 @@ export class CampaignActual {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'plan_id' })
+  @Column({ name: 'plan_id', type: 'varchar' })
   planId: string;
 
-  @Column({ name: 'row_id', nullable: true })
+  @Column({ name: 'row_id', type: 'varchar', nullable: true })
   rowId: string | null;
 
-  @Column({ name: 'period_label', nullable: true })
+  @Column({
+    name: 'period_label',
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+  })
   periodLabel: string | null;
 
   @Column({ name: 'period_start', type: 'date', nullable: true })
@@ -96,7 +101,7 @@ export class CampaignActual {
   })
   actualFrequency: number | null;
 
-  @Column({ default: 'manual' })
+  @Column({ type: 'varchar', length: 20, default: 'manual' })
   source: string;
 
   @Column({ type: 'text', nullable: true })
