@@ -166,7 +166,39 @@ function apiPlanToHeader(plan: ApiMediaPlan): PlanHeader {
   };
 }
 
+function safeKpiRange(obj: unknown, key: string): { low: number | null; high: number | null } {
+  if (!obj || typeof obj !== 'object') return { low: null, high: null };
+  const container = (obj as Record<string, unknown>)[key];
+  if (!container || typeof container !== 'object') return { low: null, high: null };
+  const c = container as Record<string, unknown>;
+  return {
+    low: c.low != null ? Number(c.low) : null,
+    high: c.high != null ? Number(c.high) : null,
+  };
+}
+
 function apiRowToLocalRow(apiRow: ApiMediaPlanRow): PlanRow {
+  const kpisRaw = apiRow.projectedKpis;
+  const hasKpis = kpisRaw && typeof kpisRaw === 'object' && Object.keys(kpisRaw).length > 0;
+
+  let kpis: CalculatedKpis | null = null;
+  if (hasKpis) {
+    const raw = kpisRaw as Record<string, unknown>;
+    kpis = {
+      impressions: safeKpiRange(raw, 'impressions'),
+      reach: safeKpiRange(raw, 'reach'),
+      clicks: safeKpiRange(raw, 'clicks'),
+      engagements: safeKpiRange(raw, 'engagements'),
+      videoViews2s: safeKpiRange(raw, 'videoViews2s'),
+      videoViewsTv: safeKpiRange(raw, 'videoViewsTv'),
+      landingPageViews: safeKpiRange(raw, 'landingPageViews'),
+      leads: safeKpiRange(raw, 'leads'),
+      frequency: safeKpiRange(raw, 'frequency'),
+      ctr: safeKpiRange(raw, 'ctr'),
+      benchmark: (raw.benchmark as CalculatedKpis['benchmark']) ?? null,
+    } as CalculatedKpis;
+  }
+
   return {
     id: apiRow.id,
     platform: apiRow.platform,
@@ -180,10 +212,7 @@ function apiRowToLocalRow(apiRow: ApiMediaPlanRow): PlanRow {
     buyType: apiRow.buyType ?? '',
     budget: apiRow.budget != null ? String(apiRow.budget) : '',
     notes: apiRow.notes ?? '',
-    kpis:
-      apiRow.projectedKpis && Object.keys(apiRow.projectedKpis).length > 0
-        ? (apiRow.projectedKpis as unknown as CalculatedKpis)
-        : null,
+    kpis,
     loading: false,
     noData: false,
     currencyMismatch: false,
@@ -970,14 +999,26 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
   // ─── Summary aggregates ───────────────────────────────────────────────────
 
   const validRows = activeRows.filter((r) => r.kpis && !r.currencyMismatch);
-  const totalReach = {
-    low: validRows.reduce((s, r) => s + (r.kpis?.reach.low ?? 0), 0) || null,
-    high: validRows.reduce((s, r) => s + (r.kpis?.reach.high ?? 0), 0) || null,
+
+  const safeSum = (
+    rows: PlanRow[],
+    path: (kpi: CalculatedKpis) => { low: number | null; high: number | null } | undefined,
+  ): { low: number | null; high: number | null } => {
+    let lowSum = 0;
+    let highSum = 0;
+    let hasAny = false;
+    for (const r of rows) {
+      if (!r.kpis) continue;
+      const range = path(r.kpis);
+      if (!range) continue;
+      if (range.low != null) { lowSum += range.low; hasAny = true; }
+      if (range.high != null) { highSum += range.high; hasAny = true; }
+    }
+    return hasAny ? { low: lowSum || null, high: highSum || null } : { low: null, high: null };
   };
-  const totalImpressions = {
-    low: validRows.reduce((s, r) => s + (r.kpis?.impressions.low ?? 0), 0) || null,
-    high: validRows.reduce((s, r) => s + (r.kpis?.impressions.high ?? 0), 0) || null,
-  };
+
+  const totalReach = safeSum(validRows, (k) => k.reach);
+  const totalImpressions = safeSum(validRows, (k) => k.impressions);
   const cpmRows = validRows.filter((r) => {
     const b = r.kpis?.benchmark;
     return b && (b.cpmLow != null || b.cpmHigh != null);

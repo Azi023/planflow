@@ -1,0 +1,49 @@
+{
+  "total_files_scanned": 178,
+  "skipped_files": 202,
+  "media_plans_found": 298,
+  "kpi_sheets_found": 0,
+  "unknown_files": 4,
+  "errors": 0,
+  "new_platforms_found": [],
+  "new_creative_types_found": [
+    "1 Animated Video & 2 Statics",
+    "1 Carousel",
+    "1 GDN Banner",
+    "1 Post (EST)",
+    "1 Vide & 2 Static Posts",
+    "1 Video",
+    "1 photo album\n2nos Main videos S/T",
+    "1 static Post",
+    "1 vertical Social Experimental video - Sinhala",
+    "1 vertical Social Experimental video - Tamil",
+    "1 vertical video - Sin",
+    "1 vertical video - Tam",
+    "1 x animated banner set",
+    "10 videos & 10 static images",
+    "15sec - vertical asset",
+    "15sec, 6sec Cuts",
+    "2 Display Banners",
+    "2 Gut Check content",
+    "2 Gutsy and Dale Videos",
+    "2 Main Videos & 8 Cuts"
+  ],
+  "data_quality_issues": [
+    {
+      "file": "Peoples Bank/People_s Bank FB Likes Campaign.xlsx",
+      "issue": "No extractable sheets found"
+    },
+    {
+      "file": "Peoples Bank/People_s Banka Likes & Fllower Campaign.xlsx",
+      "issue": "No extractable sheets found"
+    },
+    {
+      "file": "Peoples Bank/Peoples Bank  Ethara Hamuwa Campaign - Kuwait.xlsx",
+      "issue": "No extractable sheets found"
+    },
+    {
+      "file": "Peoples Bank/Vehicle Loan Campaign - Full Leads List.xlsx",
+      "issue": "No extractable sheets found"
+    }
+  ]
+}
