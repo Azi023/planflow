@@ -198,3 +198,88 @@ export async function importBenchmarksCsv(
 export function exportPlanPptx(planId: string, filename: string): Promise<void> {
   return downloadExport(`/media-plans/${planId}/export/pptx`, filename);
 }
+
+// ─── Actuals ──────────────────────────────────────────────────────────────────
+
+export interface CampaignActual {
+  id: string;
+  planId: string;
+  rowId: string | null;
+  periodLabel: string | null;
+  periodStart: string | null;
+  periodEnd: string | null;
+  actualImpressions: number | null;
+  actualReach: number | null;
+  actualClicks: number | null;
+  actualEngagements: number | null;
+  actualVideoViews: number | null;
+  actualLeads: number | null;
+  actualLandingPageViews: number | null;
+  actualSpend: number | null;
+  actualCpm: number | null;
+  actualCpc: number | null;
+  actualCtr: number | null;
+  actualFrequency: number | null;
+  source: string;
+  notes: string | null;
+  row?: { id: string; platform: string; audienceName: string | null } | null;
+  createdAt: string;
+}
+
+export interface ActualsSummary {
+  totalImpressions: number;
+  totalReach: number;
+  totalClicks: number;
+  totalEngagements: number;
+  totalVideoViews: number;
+  totalLeads: number;
+  totalLandingPageViews: number;
+  totalSpend: number;
+  periodCount: number;
+  periods: string[];
+  avgCpm?: number;
+  avgCtr?: number;
+  avgCpc?: number;
+}
+
+export function fetchActuals(planId: string): Promise<CampaignActual[]> {
+  return request<CampaignActual[]>(`/actuals/plan/${planId}`);
+}
+
+export function fetchActualsSummary(planId: string): Promise<ActualsSummary> {
+  return request<ActualsSummary>(`/actuals/plan/${planId}/summary`);
+}
+
+export function createActual(data: Partial<CampaignActual>): Promise<CampaignActual> {
+  return request<CampaignActual>('/actuals', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function bulkCreateActuals(data: {
+  planId: string;
+  periodLabel?: string;
+  periodStart?: string;
+  periodEnd?: string;
+  entries: Record<string, unknown>[];
+}): Promise<{ created: number }> {
+  return request<{ created: number }>('/actuals/bulk', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateActual(
+  id: string,
+  data: Partial<CampaignActual>,
+): Promise<CampaignActual> {
+  return request<CampaignActual>(`/actuals/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteActual(id: string): Promise<void> {
+  return request<void>(`/actuals/${id}`, { method: 'DELETE' });
+}

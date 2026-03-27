@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { fetchDashboardStats } from '@/lib/api';
 import { DashboardStats } from '@/components/dashboard/DashboardStats';
@@ -32,6 +33,16 @@ interface PlatformBreakdownItem {
   totalBudget: number;
 }
 
+interface CampaignDeliveryItem {
+  planId: string;
+  variantGroupId: string;
+  campaignName: string | null;
+  clientName: string | null;
+  status: string;
+  deliveryPct: number | null;
+  hasActuals: boolean;
+}
+
 interface DashboardData {
   totalClients: number;
   totalProducts: number;
@@ -42,6 +53,7 @@ interface DashboardData {
   recentPlans: RecentPlan[];
   clientSummary: ClientSummaryItem[];
   platformBreakdown: PlatformBreakdownItem[];
+  campaignDelivery: CampaignDeliveryItem[];
 }
 
 const PLATFORM_COLORS: Record<string, string> = {
@@ -140,6 +152,102 @@ function PlatformBreakdown({ items, loading }: { items: PlatformBreakdownItem[];
   );
 }
 
+function deliveryColor(pct: number | null): string {
+  if (pct == null) return '#99A1B7';
+  if (pct >= 90) return '#17C653';
+  if (pct >= 60) return '#F6B100';
+  return '#F8285A';
+}
+
+function CampaignPerformance({
+  items,
+  loading,
+}: {
+  items: CampaignDeliveryItem[];
+  loading: boolean;
+}) {
+  return (
+    <div className="bg-white rounded-[8px] border border-[#E1E3EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)] px-6 py-5">
+      <p className="text-sm font-semibold text-[#071437] mb-4">Campaign Performance</p>
+
+      {loading && (
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex gap-4">
+              <div className="skeleton h-4 rounded w-32" />
+              <div className="skeleton h-4 rounded w-24" />
+              <div className="skeleton h-4 rounded w-16" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!loading && items.length === 0 && (
+        <p className="text-sm text-[#99A1B7] text-center py-6">
+          No approved or sent plans yet
+        </p>
+      )}
+
+      {!loading && items.length > 0 && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-[#E1E3EA]">
+                <th className="text-left pb-2.5 font-medium text-[#4B5675]">Campaign</th>
+                <th className="text-left pb-2.5 font-medium text-[#4B5675]">Client</th>
+                <th className="text-left pb-2.5 font-medium text-[#4B5675]">Status</th>
+                <th className="text-right pb-2.5 font-medium text-[#4B5675]">Delivery</th>
+                <th className="pb-2.5" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#F1F1F4]">
+              {items.map((item) => (
+                <tr key={item.planId} className="hover:bg-[#F9F9F9]">
+                  <td className="py-2.5 pr-4 font-medium text-[#071437] max-w-[180px] truncate">
+                    {item.campaignName ?? '—'}
+                  </td>
+                  <td className="py-2.5 pr-4 text-[#4B5675]">{item.clientName ?? '—'}</td>
+                  <td className="py-2.5 pr-4">
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                        item.status === 'approved'
+                          ? 'bg-[#DFFFEA] text-[#078A3C]'
+                          : 'bg-[#E9F3FF] text-[#1B84FF]'
+                      }`}
+                    >
+                      {item.status === 'approved' ? 'Approved' : 'Sent'}
+                    </span>
+                  </td>
+                  <td className="py-2.5 pr-4 text-right tabular-nums">
+                    {item.hasActuals && item.deliveryPct != null ? (
+                      <span
+                        className="font-semibold"
+                        style={{ color: deliveryColor(item.deliveryPct) }}
+                      >
+                        {item.deliveryPct}%
+                      </span>
+                    ) : (
+                      <span className="text-[#99A1B7]">No data</span>
+                    )}
+                  </td>
+                  <td className="py-2.5 text-right">
+                    <Link
+                      href={`/media-plans/${item.variantGroupId}`}
+                      className="text-[#1B84FF] hover:underline whitespace-nowrap"
+                    >
+                      Enter Actuals →
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -189,6 +297,11 @@ export default function DashboardPage() {
 
       {/* Platform breakdown */}
       <PlatformBreakdown items={data?.platformBreakdown ?? []} loading={loading} />
+
+      {/* Campaign performance */}
+      <div className="mt-6">
+        <CampaignPerformance items={data?.campaignDelivery ?? []} loading={loading} />
+      </div>
     </main>
   );
 }

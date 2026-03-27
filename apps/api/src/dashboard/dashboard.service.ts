@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { MediaPlan } from '../entities/media-plan.entity';
 import { MediaPlanRow } from '../entities/media-plan-row.entity';
 import { Client } from '../entities/client.entity';
 import { Product } from '../entities/product.entity';
+import { CampaignActual } from '../entities/campaign-actual.entity';
 
 export interface RecentPlan {
   id: string;
@@ -32,6 +33,16 @@ export interface PlatformBreakdownItem {
   totalBudget: number;
 }
 
+export interface CampaignDeliveryItem {
+  planId: string;
+  variantGroupId: string;
+  campaignName: string | null;
+  clientName: string | null;
+  status: string;
+  deliveryPct: number | null;
+  hasActuals: boolean;
+}
+
 export interface DashboardStats {
   totalClients: number;
   totalProducts: number;
@@ -42,6 +53,7 @@ export interface DashboardStats {
   recentPlans: RecentPlan[];
   clientSummary: ClientSummaryItem[];
   platformBreakdown: PlatformBreakdownItem[];
+  campaignDelivery: CampaignDeliveryItem[];
 }
 
 @Injectable()
@@ -55,6 +67,8 @@ export class DashboardService {
     private readonly clientRepo: Repository<Client>,
     @InjectRepository(Product)
     private readonly productRepo: Repository<Product>,
+    @InjectRepository(CampaignActual)
+    private readonly actualRepo: Repository<CampaignActual>,
   ) {}
 
   async getStats(): Promise<DashboardStats> {
@@ -181,6 +195,46 @@ export class DashboardService {
       totalBudget: Number(r.totalBudget) || 0,
     }));
 
+    // Campaign delivery for approved/sent plans
+    const activePlans = await this.planRepo.find({
+      where: { status: In(['approved', 'sent']) },
+      relations: ['client', 'rows'],
+    });
+
+    const campaignDelivery: CampaignDeliveryItem[] = await Promise.all(
+      activePlans.map(async (plan) => {
+        const actuals = await this.actualRepo.find({
+          where: { planId: plan.id },
+        });
+
+        const totalActualImpressions = actuals.reduce(
+          (s, a) => s + Number(a.actualImpressions ?? 0),
+          0,
+        );
+
+        const projectedLow = (plan.rows ?? []).reduce((s, r) => {
+          const kpis = r.projectedKpis as Record<
+            string,
+            { low?: number; high?: number }
+          > | null;
+          return s + Number(kpis?.impressions?.low ?? 0);
+        }, 0);
+
+        return {
+          planId: plan.id,
+          variantGroupId: plan.variantGroupId ?? plan.id,
+          campaignName: plan.campaignName,
+          clientName: plan.client?.name ?? null,
+          status: plan.status,
+          deliveryPct:
+            projectedLow > 0
+              ? Math.round((totalActualImpressions / projectedLow) * 100)
+              : null,
+          hasActuals: actuals.length > 0,
+        };
+      }),
+    );
+
     return {
       totalClients,
       totalProducts,
@@ -191,6 +245,7 @@ export class DashboardService {
       recentPlans,
       clientSummary,
       platformBreakdown,
+      campaignDelivery,
     };
   }
 }
