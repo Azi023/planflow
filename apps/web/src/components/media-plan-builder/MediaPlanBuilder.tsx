@@ -15,6 +15,9 @@ import {
   updatePlanStatus,
   duplicatePlan,
   createTemplateFromPlan,
+  enableSharing,
+  disableSharing,
+  fetchPlanComments,
 } from '@/lib/api';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -98,6 +101,7 @@ interface PlanHeader {
   fee2Label: string;
   bufferPct: string;
   currency: string;
+  usdExchangeRate: string;
   notes: string;
   preparedBy: string;
 }
@@ -142,6 +146,7 @@ function defaultHeader(): PlanHeader {
     fee2Label: '',
     bufferPct: '12',
     currency: 'LKR',
+    usdExchangeRate: '330',
     notes: '',
     preparedBy: '',
   };
@@ -161,6 +166,7 @@ function apiPlanToHeader(plan: ApiMediaPlan): PlanHeader {
     fee2Label: plan.fee2Label ?? '',
     bufferPct: String(plan.bufferPct ?? 12),
     currency: plan.currency ?? 'LKR',
+    usdExchangeRate: plan.usdExchangeRate != null ? String(plan.usdExchangeRate) : '330',
     notes: plan.notes ?? '',
     preparedBy: plan.preparedBy ?? '',
   };
@@ -273,7 +279,6 @@ function PlanRowItem({
 
   const kpiCell = (content: React.ReactNode) => {
     if (row.loading) return <span className="text-[#1B84FF] text-[11px]">…</span>;
-    if (row.currencyMismatch) return null;
     if (row.noData) return null;
     return content;
   };
@@ -291,28 +296,28 @@ function PlanRowItem({
 
   const firstKpiContent = () => {
     if (row.loading) return <span className="text-[#1B84FF]">…</span>;
-    if (row.currencyMismatch) {
-      return (
-        <span
-          className="text-[#F6B100] text-[10px] font-medium"
-          title={`Benchmark uses ${row.benchmarkCurrency ?? 'USD'} pricing but budget is in ${currency}. Switch currency or enter budget in ${row.benchmarkCurrency ?? 'USD'}.`}
-        >
-          ⚠ {row.benchmarkCurrency ?? 'USD'} pricing
-        </span>
-      );
-    }
     if (row.noData) {
       return <span className="text-[#99A1B7] italic text-[10px]">No benchmark data</span>;
     }
     return kpi ? (
-      <span title={fullRange(kpi.impressions.low, kpi.impressions.high)}>
-        {optionCCell(kpi.impressions)}
-      </span>
+      <div>
+        <span title={fullRange(kpi.impressions.low, kpi.impressions.high)}>
+          {optionCCell(kpi.impressions)}
+        </span>
+        {row.currencyMismatch && (
+          <span
+            className="block text-[9px] text-[#F6B100] font-medium"
+            title={`Budget converted from ${currency} to ${row.benchmarkCurrency ?? 'USD'} for KPI projection`}
+          >
+            {row.benchmarkCurrency ?? 'USD'} rate
+          </span>
+        )}
+      </div>
     ) : '—';
   };
 
   const rowClass = row.currencyMismatch
-    ? 'border-b border-[#F6B100]/20 bg-[#FFF8DD] text-xs'
+    ? 'border-b border-[#F6B100]/10 hover:bg-[#FFFDF5] text-xs transition-colors'
     : selected
       ? 'border-b border-[#1B84FF]/20 bg-[#EEF6FF] text-xs'
       : 'border-b border-[#F1F1F4] hover:bg-[#F9F9F9] text-xs transition-colors';
@@ -688,6 +693,67 @@ const PERIOD_PRESETS = [
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 
+// ─── Share Modal ─────────────────────────────────────────────────────────────
+
+interface ShareModalProps {
+  shareUrl: string;
+  onRevoke: () => void;
+  onClose: () => void;
+}
+
+function ShareModal({ shareUrl, onRevoke, onClose }: ShareModalProps) {
+  const [copyMsg, setCopyMsg] = useState('');
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopyMsg('Copied!');
+      setTimeout(() => setCopyMsg(''), 2000);
+    } catch {
+      setCopyMsg('Copy failed');
+      setTimeout(() => setCopyMsg(''), 2000);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-[12px] border border-[#E1E3EA] shadow-xl w-full max-w-md p-6">
+        <h3 className="text-base font-semibold text-[#071437] mb-1">Share Plan with Client</h3>
+        <p className="text-[13px] text-[#99A1B7] mb-4">Anyone with this link can view the plan without logging in.</p>
+        <div className="flex gap-2 mb-4">
+          <input
+            readOnly
+            value={shareUrl}
+            className="flex-1 border border-[#E1E3EA] rounded-[6px] px-3 py-2 text-sm text-[#4B5675] bg-[#F9F9F9] focus:outline-none"
+          />
+          <button
+            onClick={handleCopy}
+            className="bg-[#1B84FF] text-white rounded-[6px] px-4 py-2 text-sm font-medium hover:bg-[#056EE9] transition-colors whitespace-nowrap"
+          >
+            {copyMsg || 'Copy Link'}
+          </button>
+        </div>
+        <div className="flex items-center justify-between pt-4 border-t border-[#F1F1F4]">
+          <button
+            onClick={onRevoke}
+            className="text-sm text-[#F8285A] hover:underline"
+          >
+            Revoke Access
+          </button>
+          <button
+            onClick={onClose}
+            className="bg-white border border-[#E1E3EA] text-[#4B5675] rounded-[6px] px-4 py-2 text-sm font-medium hover:bg-[#F9F9F9] transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Component ────────────────────────────────────────────────────────────
+
 export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
   const router = useRouter();
   const { user } = useAuth();
@@ -716,6 +782,12 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
 
   // Save as template modal
   const [showTemplateModal, setShowTemplateModal] = useState(false);
+
+  // Share modal
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareToken, setShareToken] = useState<string | null>(null);
+  const [sharingLoading, setSharingLoading] = useState(false);
+  const [unreadComments, setUnreadComments] = useState(0);
 
   // Stable refs — avoids stale closures in async callbacks
   const planRowsRef = useRef<PlanRow[]>(variants[0].rows);
@@ -766,6 +838,15 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
             status: p.status ?? 'draft',
           })),
         );
+        // Fetch unread comments for this plan
+        if (plans[0]?.id) {
+          fetchPlanComments(plans[0].id)
+            .then((comments) => {
+              const unread = (comments as Array<{ isRead: boolean }>).filter((c) => !c.isRead).length;
+              setUnreadComments(unread);
+            })
+            .catch(() => {});
+        }
       })
       .catch(() => {})
       .finally(() => setInitialLoading(false));
@@ -812,7 +893,34 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
 
           const mismatch = raw.benchmark.currency !== headerRef.current.currency;
           const buffer = parseFloat(headerRef.current.bufferPct) || 0;
-          const kpis = mismatch ? null : applyBufferToKpis(raw, buffer);
+
+          let kpis: CalculatedKpis | null;
+          if (mismatch) {
+            // Convert budget to benchmark currency before calculating KPIs
+            const rate = parseFloat(headerRef.current.usdExchangeRate) || 330;
+            const planCurrency = headerRef.current.currency;
+            const benchCurrency = raw.benchmark.currency;
+            let convertedBudget = parseFloat(row.budget);
+            if (planCurrency === 'LKR' && benchCurrency === 'USD') {
+              convertedBudget = parseFloat(row.budget) / rate;
+            } else if (planCurrency === 'USD' && benchCurrency === 'LKR') {
+              convertedBudget = parseFloat(row.budget) * rate;
+            }
+            try {
+              const convertedRaw = await calculateKpis({
+                platform: row.platform,
+                objective: row.objective,
+                audienceType: row.audienceType,
+                budget: convertedBudget,
+                currency: benchCurrency,
+              });
+              kpis = applyBufferToKpis(convertedRaw, buffer);
+            } catch {
+              kpis = null;
+            }
+          } else {
+            kpis = applyBufferToKpis(raw, buffer);
+          }
 
           setVariants((vs) =>
             vs.map((v, i) =>
@@ -998,7 +1106,7 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
 
   // ─── Summary aggregates ───────────────────────────────────────────────────
 
-  const validRows = activeRows.filter((r) => r.kpis && !r.currencyMismatch);
+  const validRows = activeRows.filter((r) => r.kpis);
 
   const safeSum = (
     rows: PlanRow[],
@@ -1050,6 +1158,7 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
     preparedBy: header.preparedBy || undefined,
     bufferPct: bufferNum,
     currency: header.currency,
+    usdExchangeRate: parseFloat(header.usdExchangeRate) || 330,
     variantName,
     notes: header.notes || undefined,
     variantGroupId: variantGroupId ?? undefined,
@@ -1171,6 +1280,37 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
     setTimeout(() => setSaveMsg(''), 3000);
   };
 
+  const handleShare = async () => {
+    const savedId = activeVariant.savedId;
+    if (!savedId) return;
+    setSharingLoading(true);
+    try {
+      const result = await enableSharing(savedId);
+      setShareToken(result.shareToken);
+      setShowShareModal(true);
+    } catch (e) {
+      setSaveMsg(e instanceof Error ? e.message : 'Share failed');
+      setTimeout(() => setSaveMsg(''), 3000);
+    } finally {
+      setSharingLoading(false);
+    }
+  };
+
+  const handleRevokeShare = async () => {
+    const savedId = activeVariant.savedId;
+    if (!savedId) return;
+    try {
+      await disableSharing(savedId);
+      setShareToken(null);
+      setShowShareModal(false);
+      setSaveMsg('Share link revoked');
+      setTimeout(() => setSaveMsg(''), 3000);
+    } catch (e) {
+      setSaveMsg(e instanceof Error ? e.message : 'Revoke failed');
+      setTimeout(() => setSaveMsg(''), 3000);
+    }
+  };
+
   // ─── Status workflow ──────────────────────────────────────────────────────
 
   const handleStatusChange = async (newStatus: string) => {
@@ -1208,6 +1348,14 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
           onSave={handleSaveAsTemplate}
           onClose={() => setShowTemplateModal(false)}
           isAdmin={isAdmin}
+        />
+      )}
+
+      {showShareModal && shareToken && (
+        <ShareModal
+          shareUrl={`${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3002'}/shared/${shareToken}`}
+          onRevoke={handleRevokeShare}
+          onClose={() => setShowShareModal(false)}
         />
       )}
 
@@ -1363,6 +1511,27 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
                 />
               </div>
             </div>
+
+            {/* USD Exchange Rate — shown when plan currency is LKR */}
+            {header.currency === 'LKR' && (
+              <div>
+                <label className="block text-[13px] font-medium text-[#4B5675] mb-1.5">
+                  USD Rate
+                  <span className="ml-1 text-[#99A1B7] cursor-help" title="Used to convert budgets for platforms with USD benchmarks (YouTube, TikTok)">ⓘ</span>
+                </label>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-[#99A1B7] whitespace-nowrap">1 USD =</span>
+                  <input
+                    type="number"
+                    value={header.usdExchangeRate}
+                    onChange={(e) => hdr({ usdExchangeRate: e.target.value })}
+                    placeholder="330"
+                    className="w-20 border border-[#E1E3EA] rounded-[6px] px-2 py-2 text-sm text-[#071437] focus:outline-none focus:border-[#1B84FF] focus:ring-1 focus:ring-[#1B84FF]/20 transition-colors"
+                  />
+                  <span className="text-xs text-[#99A1B7]">LKR</span>
+                </div>
+              </div>
+            )}
 
             {/* Fee Structure */}
             <div className="col-span-2 md:col-span-1">
@@ -1702,6 +1871,22 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
             />
           </div>
 
+          {/* Unread client comments notification */}
+          {unreadComments > 0 && (
+            <div className="flex items-center gap-2 bg-[#FFF8DD] border border-[#F6B100]/20 rounded-lg px-3 py-2 text-sm">
+              <span className="text-[#F6B100]">💬</span>
+              <span className="text-[#4B5675]">
+                {unreadComments} new client comment{unreadComments > 1 ? 's' : ''}
+              </span>
+              <button
+                onClick={() => setUnreadComments(0)}
+                className="text-[#1B84FF] font-medium hover:underline text-xs"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
           {/* Save + Export + Actions */}
           <div className="flex items-center gap-3 flex-wrap">
             <button
@@ -1771,6 +1956,17 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
                     <span className="w-3.5 h-3.5 border-2 border-[#4B5675]/30 border-t-[#4B5675] rounded-full animate-spin" />
                   ) : '📋'}
                   {duplicating ? 'Duplicating…' : 'Duplicate Plan'}
+                </button>
+                <button
+                  onClick={handleShare}
+                  disabled={sharingLoading}
+                  className="bg-white border border-[#1B84FF] text-[#1B84FF] rounded-lg px-4 py-2.5 text-sm font-semibold hover:bg-[#EEF6FF] transition-colors flex items-center gap-2 disabled:opacity-60"
+                  title="Share this plan with the client"
+                >
+                  {sharingLoading ? (
+                    <span className="w-3.5 h-3.5 border-2 border-[#1B84FF]/30 border-t-[#1B84FF] rounded-full animate-spin" />
+                  ) : '🔗'}
+                  {sharingLoading ? 'Loading…' : 'Share with Client'}
                 </button>
               </>
             )}

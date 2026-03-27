@@ -109,6 +109,30 @@ export class MediaPlan {
   @Column({ length: 3, default: 'LKR' })
   currency: string;
 
+  @Column({
+    name: 'usd_exchange_rate',
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+  })
+  usdExchangeRate: number | null;
+
+  @Column({
+    name: 'share_token',
+    type: 'varchar',
+    length: 64,
+    nullable: true,
+    unique: true,
+  })
+  shareToken: string | null;
+
+  @Column({ name: 'share_enabled', type: 'boolean', default: false })
+  shareEnabled: boolean;
+
+  @Column({ name: 'share_expires_at', type: 'timestamp', nullable: true })
+  shareExpiresAt: Date | null;
+
   @Column({ name: 'variant_name', length: 50, default: 'Option 1' })
   variantName: string;
 

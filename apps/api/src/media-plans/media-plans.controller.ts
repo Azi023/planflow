@@ -12,13 +12,17 @@ import {
   Req,
 } from '@nestjs/common';
 import { MediaPlansService } from './media-plans.service';
+import { SharingService } from '../sharing/sharing.service';
 import { CreatePlanDto } from './dto/create-plan.dto';
 import { MediaPlan } from '../entities/media-plan.entity';
 import { Roles } from '../auth/roles.decorator';
 
 @Controller('media-plans')
 export class MediaPlansController {
-  constructor(private readonly mediaPlansService: MediaPlansService) {}
+  constructor(
+    private readonly mediaPlansService: MediaPlansService,
+    private readonly sharingService: SharingService,
+  ) {}
 
   @Get()
   findAll() {
@@ -90,5 +94,29 @@ export class MediaPlansController {
   @HttpCode(204)
   delete(@Param('id', ParseUUIDPipe) id: string) {
     return this.mediaPlansService.delete(id);
+  }
+
+  @Post(':id/share')
+  enableSharing(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('expiresInDays') expiresInDays?: number,
+  ) {
+    return this.sharingService.enableSharing(id, expiresInDays);
+  }
+
+  @Delete(':id/share')
+  @HttpCode(200)
+  disableSharing(@Param('id', ParseUUIDPipe) id: string) {
+    return this.sharingService.disableSharing(id);
+  }
+
+  @Get(':id/comments')
+  getComments(@Param('id', ParseUUIDPipe) id: string) {
+    return this.sharingService.getComments(id);
+  }
+
+  @Patch(':id/comments/read')
+  markCommentsRead(@Param('id', ParseUUIDPipe) id: string) {
+    return this.sharingService.markCommentsRead(id);
   }
 }

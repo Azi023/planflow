@@ -134,6 +134,7 @@ export interface MediaPlan {
   referenceNumber: string | null;
   preparedBy: string | null;
   currency: string;
+  usdExchangeRate: number | null;
   variantName: string;
   notes: string | null;
   status: string;

@@ -29,7 +29,7 @@ export function NavBar() {
   const pathname = usePathname();
   const { user, signOut } = useAuth();
 
-  if (pathname === '/login') return null;
+  if (pathname === '/login' || pathname.startsWith('/shared/')) return null;
 
   const initials = user
     ? user.name

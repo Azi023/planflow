@@ -160,6 +160,12 @@ export class CreatePlanDto {
   notes?: string;
 
   @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  usdExchangeRate?: number;
+
+  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreatePlanRowDto)

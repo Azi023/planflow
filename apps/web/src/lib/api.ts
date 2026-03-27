@@ -351,3 +351,44 @@ export function updateActual(
 export function deleteActual(id: string): Promise<void> {
   return request<void>(`/actuals/${id}`, { method: 'DELETE' });
 }
+
+// ─── Sharing ──────────────────────────────────────────────────────────────────
+
+export function enableSharing(
+  planId: string,
+  expiresInDays?: number,
+): Promise<{ shareToken: string; shareUrl: string }> {
+  return request<{ shareToken: string; shareUrl: string }>(
+    `/media-plans/${planId}/share`,
+    { method: 'POST', body: JSON.stringify({ expiresInDays }) },
+  );
+}
+
+export function disableSharing(planId: string): Promise<void> {
+  return request<void>(`/media-plans/${planId}/share`, { method: 'DELETE' });
+}
+
+export function fetchSharedPlan(token: string): Promise<Record<string, unknown>> {
+  return fetch(`${BASE}/shared/${token}`).then((r) => {
+    if (!r.ok) throw new Error('Plan not found');
+    return r.json() as Promise<Record<string, unknown>>;
+  });
+}
+
+export function submitComment(
+  token: string,
+  data: { content: string; authorName: string; authorEmail?: string },
+): Promise<Record<string, unknown>> {
+  return fetch(`${BASE}/shared/${token}/comments`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  }).then((r) => {
+    if (!r.ok) throw new Error('Failed to submit comment');
+    return r.json() as Promise<Record<string, unknown>>;
+  });
+}
+
+export function fetchPlanComments(planId: string): Promise<Record<string, unknown>[]> {
+  return request<Record<string, unknown>[]>(`/media-plans/${planId}/comments`);
+}

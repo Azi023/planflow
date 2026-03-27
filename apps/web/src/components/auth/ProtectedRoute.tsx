@@ -11,7 +11,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, isLoading } = useAuth();
   const pathname = usePathname();
 
-  if (pathname === '/login') return <>{children}</>;
+  if (pathname === '/login' || pathname.startsWith('/shared/')) return <>{children}</>;
 
   if (isLoading) {
     return (

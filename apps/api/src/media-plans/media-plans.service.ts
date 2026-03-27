@@ -57,6 +57,7 @@ export class MediaPlansService {
       referenceNumber: dto.referenceNumber ?? null,
       preparedBy: dto.preparedBy ?? null,
       currency: dto.currency ?? 'LKR',
+      usdExchangeRate: dto.usdExchangeRate ?? null,
       variantName: dto.variantName ?? 'Option 1',
       variantGroupId: dto.variantGroupId ?? null,
       notes: dto.notes ?? null,
@@ -104,6 +105,7 @@ export class MediaPlansService {
       referenceNumber: dto.referenceNumber,
       preparedBy: dto.preparedBy,
       currency: dto.currency,
+      usdExchangeRate: dto.usdExchangeRate,
       variantName: dto.variantName,
       notes: dto.notes,
     });
@@ -194,6 +196,7 @@ export class MediaPlansService {
       referenceNumber: refNumber,
       preparedBy: original.preparedBy,
       currency: original.currency,
+      usdExchangeRate: original.usdExchangeRate,
       variantName: original.variantName,
       notes: original.notes,
       status: 'draft',
