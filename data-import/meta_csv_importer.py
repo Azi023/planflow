@@ -33,7 +33,7 @@ import psycopg2.extras
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
-DB_DSN = "host=localhost port=5435 dbname=planflow user=planflow password=planflow_dev"
+DB_DSN = "host=localhost port=5432 dbname=planflow_prod user=planflow password=Pf@2026!xK9mWq"
 META_EXPORTS_DIR = Path(__file__).parent / "meta-exports"
 LOG_FILE = Path(__file__).parent / "meta-import.log"
 ADMIN_USER_ID = "8767a0bd-dede-45fe-96ec-3141c7338579"

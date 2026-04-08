@@ -527,6 +527,39 @@ export class BenchmarksService {
       ctr,
     };
   }
+
+  async exportCsv(audienceType?: string): Promise<string> {
+    const where: any = {};
+    if (audienceType) where.audienceType = audienceType;
+
+    const benchmarks = await this.benchmarkRepo.find({
+      where,
+      order: { platform: 'ASC', objective: 'ASC', audienceType: 'ASC' },
+    });
+
+    const headers = [
+      'platform','objective','audience_type','currency',
+      'cpm_low','cpm_high','cpr_low','cpr_high',
+      'cpe_low','cpe_high','cpc_low','cpc_high',
+      'ctr_low','ctr_high','cpv_2s_low','cpv_2s_high',
+      'cpv_tv_low','cpv_tv_high','cplv_low','cplv_high',
+      'cpl_low','cpl_high','page_like_low','page_like_high',
+      'frequency','min_duration','min_daily_budget',
+    ];
+
+    const rows = benchmarks.map((b) => [
+      b.platform, b.objective, b.audienceType, b.currency,
+      b.cpmLow ?? '', b.cpmHigh ?? '', b.cprLow ?? '', b.cprHigh ?? '',
+      b.cpeLow ?? '', b.cpeHigh ?? '', b.cpcLow ?? '', b.cpcHigh ?? '',
+      b.ctrLow ?? '', b.ctrHigh ?? '', b.cpv2sLow ?? '', b.cpv2sHigh ?? '',
+      b.cpvTvLow ?? '', b.cpvTvHigh ?? '', b.cplvLow ?? '', b.cplvHigh ?? '',
+      b.cplLow ?? '', b.cplHigh ?? '', b.pageLikeLow ?? '', b.pageLikeHigh ?? '',
+      b.frequency ?? '', b.minDuration ?? '', b.minDailyBudget ?? '',
+    ].join(','));
+
+    return [headers.join(','), ...rows].join('\n');
+  }
+
 }
 
 // Suppress unused variable warning for TUNABLE_FIELDS

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, GoneException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { randomBytes } from 'crypto';
@@ -53,7 +53,7 @@ export class SharingService {
     if (!plan) throw new NotFoundException('Plan not found or sharing disabled');
 
     if (plan.shareExpiresAt && new Date() > plan.shareExpiresAt) {
-      throw new NotFoundException('Share link has expired');
+      throw new GoneException('Share link has expired');
     }
 
     const comments = await this.commentRepo.find({
@@ -109,7 +109,7 @@ export class SharingService {
     if (!plan) throw new NotFoundException('Plan not found or sharing disabled');
 
     if (plan.shareExpiresAt && new Date() > plan.shareExpiresAt) {
-      throw new NotFoundException('Share link has expired');
+      throw new GoneException('Share link has expired');
     }
 
     const comment = this.commentRepo.create({
@@ -139,4 +139,67 @@ export class SharingService {
   async markCommentsRead(planId: string): Promise<void> {
     await this.commentRepo.update({ planId, isRead: false }, { isRead: true });
   }
+
+  async clientApprove(
+    token: string,
+    authorName: string,
+  ): Promise<Record<string, unknown>> {
+    const plan = await this.planRepo.findOne({
+      where: { shareToken: token, shareEnabled: true },
+    });
+    if (!plan) throw new NotFoundException('Plan not found or sharing disabled');
+    if (plan.shareExpiresAt && new Date() > plan.shareExpiresAt) {
+      throw new GoneException('Share link has expired');
+    }
+
+    if (plan.status !== 'pending_review' && plan.status !== 'approved') {
+      throw new BadRequestException(
+        `Cannot approve a plan with status "${plan.status}". Plan must be in review.`,
+      );
+    }
+
+    await this.planRepo.update(plan.id, { status: 'approved' });
+
+    const comment = this.commentRepo.create({
+      planId: plan.id,
+      content: `Plan approved by client`,
+      authorName,
+      isClient: true,
+      isRead: false,
+    });
+    await this.commentRepo.save(comment);
+
+    return { success: true, newStatus: 'approved', message: 'Plan approved' };
+  }
+
+  async clientRequestRevision(
+    token: string,
+    authorName: string,
+    reason?: string,
+  ): Promise<Record<string, unknown>> {
+    const plan = await this.planRepo.findOne({
+      where: { shareToken: token, shareEnabled: true },
+    });
+    if (!plan) throw new NotFoundException('Plan not found or sharing disabled');
+    if (plan.shareExpiresAt && new Date() > plan.shareExpiresAt) {
+      throw new GoneException('Share link has expired');
+    }
+
+    await this.planRepo.update(plan.id, { status: 'draft' });
+
+    const msg = reason
+      ? `Revision requested: ${reason}`
+      : 'Revision requested by client';
+    const comment = this.commentRepo.create({
+      planId: plan.id,
+      content: msg,
+      authorName,
+      isClient: true,
+      isRead: false,
+    });
+    await this.commentRepo.save(comment);
+
+    return { success: true, newStatus: 'draft', message: msg };
+  }
+
 }

@@ -35,4 +35,19 @@ export class ExportController {
     });
     res.end(buffer);
   }
+
+  @Get(':id/export/pdf')
+  async exportPdf(
+    @Param('id') id: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const { buffer, filename } = await this.exportService.exportPdf(id);
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Length': buffer.length,
+    });
+    res.end(buffer);
+  }
+
 }

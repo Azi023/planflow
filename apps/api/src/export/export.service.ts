@@ -5,6 +5,7 @@ import { MediaPlan } from '../entities/media-plan.entity';
 import { MediaPlanRow } from '../entities/media-plan-row.entity';
 import { buildExcelBuffer } from './templates/excel-template';
 import { buildPptxBuffer } from './templates/pptx-template';
+import { buildPdfBuffer } from './templates/pdf-template';
 
 @Injectable()
 export class ExportService {
@@ -43,4 +44,12 @@ export class ExportService {
     const safe = (plan.campaignName ?? 'media-plan').replace(/[^a-zA-Z0-9-_]/g, '_');
     return { buffer, filename: `${safe}.pptx` };
   }
+
+  async exportPdf(planId: string): Promise<{ buffer: Buffer; filename: string }> {
+    const { plan, rows } = await this.loadPlan(planId);
+    const buffer = await buildPdfBuffer(plan, rows);
+    const safe = (plan.campaignName ?? 'media-plan').replace(/[^a-zA-Z0-9-_]/g, '_');
+    return { buffer, filename: `${safe}.pdf` };
+  }
+
 }

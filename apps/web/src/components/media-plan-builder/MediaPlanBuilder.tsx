@@ -39,6 +39,7 @@ import type {
   SeasonalAlert,
 } from '@/lib/types';
 import { OBJECTIVES, PLATFORMS } from '@/lib/types';
+import BudgetAllocationChart from '@/components/media-plan-builder/BudgetAllocationChart';
 import {
   fmtNum,
   fmtKpi,
@@ -1957,6 +1958,9 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
               accent="#F6B100"
             />
           </div>
+
+          {/* Budget allocation chart */}
+          <BudgetAllocationChart rows={activeRows} currency={header.currency} />
 
           {/* Strategic notes */}
           <div>

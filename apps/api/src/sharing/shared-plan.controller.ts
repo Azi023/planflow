@@ -21,4 +21,27 @@ export class SharedPlanController {
   ) {
     return this.sharingService.addComment(token, body);
   }
+
+  @Public()
+  @Post(':token/approve')
+  approvePlan(
+    @Param('token') token: string,
+    @Body() body: { authorName: string },
+  ) {
+    return this.sharingService.clientApprove(token, body.authorName);
+  }
+
+  @Public()
+  @Post(':token/request-revision')
+  requestRevision(
+    @Param('token') token: string,
+    @Body() body: { authorName: string; reason?: string },
+  ) {
+    return this.sharingService.clientRequestRevision(
+      token,
+      body.authorName,
+      body.reason,
+    );
+  }
+
 }

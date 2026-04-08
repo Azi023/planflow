@@ -7,11 +7,13 @@ import {
   Patch,
   Post,
   Query,
+  Res,
   ParseUUIDPipe,
   UploadedFile,
   UseInterceptors,
   Req,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { BenchmarksService } from './benchmarks.service';
 import { UpdateBenchmarkDto } from './dto/update-benchmark.dto';
@@ -65,6 +67,20 @@ export class BenchmarksController {
   @Roles('admin')
   rejectSuggestion(@Param('id', ParseUUIDPipe) id: string) {
     return this.benchmarksService.rejectSuggestion(id);
+  }
+
+
+  @Get('export')
+  async exportCsv(
+    @Query('audienceType') audienceType: string,
+    @Res() res: Response,
+  ) {
+    const csv = await this.benchmarksService.exportCsv(audienceType);
+    res.set({
+      'Content-Type': 'text/csv',
+      'Content-Disposition': `attachment; filename="benchmarks_${audienceType || 'all'}.csv"`,
+    });
+    res.send(csv);
   }
 
   @Get(':id/history')
