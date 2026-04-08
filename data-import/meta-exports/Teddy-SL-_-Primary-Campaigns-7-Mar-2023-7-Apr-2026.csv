@@ -1,0 +1,6 @@
+"Reporting starts","Reporting ends","Campaign name","Campaign delivery",Results,"Result indicator","Cost per results","Ad set budget","Ad set budget type","Amount spent (LKR)",Impressions,Reach,Ends,"Attribution setting"
+2025-09-19,2026-04-07,,0,,,,0,0,832689.69,9539450,3315868,,"7-day click or 1-day view"
+2025-09-19,2026-04-07,"Reach | Teddy",not_delivering,2477694,reach,95.35524564,"Using ad set budget",0,236261.12,6263042,2477694,2026-03-31,"7-day click or 1-day view"
+2025-09-19,2026-04-07,"Engagement | Teddy",active,,,,"Using ad set budget",0,345679.81,1716249,606167,2026-04-30,"7-day click or 1-day view"
+2025-09-19,2026-04-07,"Video Views | Teddy",active,450628,video_thruplay_watched_actions,0.48203341,"Using ad set budget",0,217217.75,1081682,699368,2026-04-30,"7-day click or 1-day view"
+2025-09-19,2026-04-07,"Traffic | Teddy",not_delivering,7785,actions:link_click,4.30713038,"Using ad set budget",0,33531.01,478477,199111,2026-03-31,"7-day click or 1-day view"

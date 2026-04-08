@@ -1,1 +1,6 @@
 metronic-reference/
+data-import/raw/
+data-import/output/
+data-import/output-v1/
+data-import/__pycache__/
+*.Zone.Identifier
