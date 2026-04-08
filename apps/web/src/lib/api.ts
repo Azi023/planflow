@@ -94,8 +94,30 @@ export function fetchCreativeTypes(): Promise<CreativeType[]> {
 
 // ─── Media Plans ─────────────────────────────────────────────────────────────
 
-export function fetchPlans(): Promise<MediaPlan[]> {
-  return request<MediaPlan[]>('/media-plans');
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export async function fetchPlans(opts?: {
+  page?: number;
+  limit?: number;
+  status?: string;
+  clientId?: string;
+  search?: string;
+}): Promise<MediaPlan[]> {
+  const params = new URLSearchParams();
+  if (opts?.page) params.set('page', String(opts.page));
+  if (opts?.limit) params.set('limit', String(opts.limit));
+  if (opts?.status) params.set('status', opts.status);
+  if (opts?.clientId) params.set('clientId', opts.clientId);
+  if (opts?.search) params.set('search', opts.search);
+  const qs = params.toString();
+  const res = await request<PaginatedResponse<MediaPlan>>(`/media-plans${qs ? '?' + qs : ''}`);
+  return res.data;
 }
 
 export function fetchPlan(id: string): Promise<MediaPlan> {
