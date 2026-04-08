@@ -5,7 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Like, Repository } from 'typeorm';
+import { ILike, Like, Repository } from 'typeorm';
 import { MediaPlan } from '../entities/media-plan.entity';
 import { MediaPlanRow } from '../entities/media-plan-row.entity';
 import { Benchmark } from '../entities/benchmark.entity';
@@ -24,11 +24,49 @@ export class MediaPlansService {
     private readonly benchmarksService: BenchmarksService,
   ) {}
 
-  findAll(): Promise<MediaPlan[]> {
-    return this.planRepo.find({
-      relations: ['client', 'product', 'rows'],
-      order: { updatedAt: 'DESC' },
-    });
+  async findAll(opts: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    clientId?: string;
+    search?: string;
+  } = {}): Promise<{ data: MediaPlan[]; total: number; page: number; limit: number; totalPages: number }> {
+    const page = Math.max(1, opts.page ?? 1);
+    const limit = Math.min(100, Math.max(1, opts.limit ?? 20));
+
+    const where: any = {};
+    if (opts.status) where.status = opts.status;
+    if (opts.clientId) where.clientId = opts.clientId;
+
+    const qb = this.planRepo
+      .createQueryBuilder('plan')
+      .leftJoinAndSelect('plan.client', 'client')
+      .leftJoinAndSelect('plan.product', 'product')
+      .orderBy('plan.updatedAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    if (opts.status) {
+      qb.andWhere('plan.status = :status', { status: opts.status });
+    }
+    if (opts.clientId) {
+      qb.andWhere('plan.clientId = :clientId', { clientId: opts.clientId });
+    }
+    if (opts.search) {
+      qb.andWhere(
+        '(plan.campaignName ILIKE :search OR plan.referenceNumber ILIKE :search)',
+        { search: `%${opts.search}%` },
+      );
+    }
+
+    const [data, total] = await qb.getManyAndCount();
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findOne(id: string): Promise<MediaPlan> {
@@ -236,25 +274,34 @@ export class MediaPlansService {
     return this.findOne(savedPlan.id);
   }
 
-  async bulkUpdateRows(
+  async bulkUpsertRows(
     planId: string,
-    rows: Array<{
-      id: string;
-      platform?: string;
-      objective?: string;
-      audienceType?: string;
-      budget?: number;
-    }>,
+    rows: Array<Record<string, any>>,
   ): Promise<MediaPlan> {
     const plan = await this.planRepo.findOne({ where: { id: planId } });
     if (!plan) throw new NotFoundException(`Plan ${planId} not found`);
 
-    await Promise.all(
-      rows.map((r) => {
-        const { id, ...updates } = r;
-        return this.rowRepo.update({ id, planId }, updates);
-      }),
-    );
+    if (!rows || !rows.length) {
+      return this.findOne(planId);
+    }
+
+    const toCreate = rows.filter((r) => !r.id);
+    const toUpdate = rows.filter((r) => r.id);
+
+    // Update existing rows
+    if (toUpdate.length) {
+      await Promise.all(
+        toUpdate.map((r) => {
+          const { id, ...updates } = r;
+          return this.rowRepo.update({ id, planId }, updates);
+        }),
+      );
+    }
+
+    // Create new rows (with KPI calculation)
+    if (toCreate.length) {
+      await this.upsertRows(planId, toCreate as any);
+    }
 
     return this.findOne(planId);
   }

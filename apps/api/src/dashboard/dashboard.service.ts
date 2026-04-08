@@ -100,7 +100,12 @@ export class DashboardService {
 
     const plansThisMonth = uniqueGroups.filter((group) => {
       const primary = group[0];
-      return primary.createdAt >= monthStart;
+      // Use startDate if available (more accurate for imported plans),
+      // otherwise fall back to createdAt
+      const relevantDate = primary.startDate
+        ? new Date(primary.startDate)
+        : primary.createdAt;
+      return relevantDate >= monthStart;
     }).length;
 
     const totalBudgetAllocated = uniqueGroups.reduce((sum, group) => {

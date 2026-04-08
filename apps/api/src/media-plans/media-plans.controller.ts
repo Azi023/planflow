@@ -9,6 +9,7 @@ import {
   Patch,
   Post,
   Put,
+  Query,
   Req,
 } from '@nestjs/common';
 import { MediaPlansService } from './media-plans.service';
@@ -25,8 +26,20 @@ export class MediaPlansController {
   ) {}
 
   @Get()
-  findAll() {
-    return this.mediaPlansService.findAll();
+  findAll(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: string,
+    @Query('clientId') clientId?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.mediaPlansService.findAll({
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 20,
+      status: status || undefined,
+      clientId: clientId || undefined,
+      search: search || undefined,
+    });
   }
 
   @Get('group/:groupId')
@@ -64,20 +77,13 @@ export class MediaPlansController {
   }
 
   @Post(':id/rows/bulk')
-  bulkUpdateRows(
+  bulkUpsertRows(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body()
-    body: {
-      rows: Array<{
-        id: string;
-        platform?: string;
-        objective?: string;
-        audienceType?: string;
-        budget?: number;
-      }>;
-    },
+    @Body() body: any,
   ) {
-    return this.mediaPlansService.bulkUpdateRows(id, body.rows);
+    // Accept both [...] (array) and {rows: [...]} (object) formats
+    const rows = Array.isArray(body) ? body : body?.rows ?? [];
+    return this.mediaPlansService.bulkUpsertRows(id, rows);
   }
 
   @Delete(':id/rows/bulk')
