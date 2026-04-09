@@ -179,8 +179,15 @@ export class TemplatesService {
         const audienceType = tr.audienceType as string;
 
         if (platform && objective && audienceType) {
+          const normPlatform = this.normalizePlatform(platform);
+          const normObjective = objective.trim().toLowerCase();
+          const normAudience = audienceType.trim().toLowerCase();
           const matched = await this.benchmarkRepo.findOne({
-            where: { platform, objective, audienceType },
+            where: {
+              platform: normPlatform,
+              objective: normObjective,
+              audienceType: normAudience,
+            },
           });
           if (matched) {
             benchmarkId = matched.id;
@@ -223,6 +230,24 @@ export class TemplatesService {
       relations: ['client', 'product', 'rows'],
     });
     return result!;
+  }
+
+  private normalizePlatform(input: string): string {
+    const map: Record<string, string> = {
+      'meta + ig': 'meta_ig',
+      'meta + instagram': 'meta_ig',
+      'meta+ig': 'meta_ig',
+      'meta only': 'meta',
+      'ig only': 'ig',
+      'ig follower': 'ig_follower',
+      'meta page like': 'meta_page_like',
+      'youtube video views': 'youtube_video',
+      'youtube bumper': 'youtube_bumper',
+      'demand gen': 'demand_gen',
+      'performance max': 'perf_max',
+    };
+    const lower = input.trim().toLowerCase();
+    return map[lower] ?? lower;
   }
 
   async delete(id: string, userId: string, userRole: string): Promise<void> {
