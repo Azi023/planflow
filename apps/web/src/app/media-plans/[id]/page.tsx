@@ -9,9 +9,9 @@ import { fetchPlanGroup } from '@/lib/api';
 
 type View = 'builder' | 'actuals';
 
-const TABS: { value: View; label: string }[] = [
-  { value: 'builder', label: 'Plan Builder' },
-  { value: 'actuals', label: 'Actuals & Performance' },
+const TABS: { value: View; label: string; icon: string }[] = [
+  { value: 'builder', label: 'Plan Builder', icon: 'M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6' },
+  { value: 'actuals', label: 'Actuals & Performance', icon: 'M22 12h-4l-3 9L9 3l-3 9H2' },
 ];
 
 interface Props {
@@ -36,22 +36,25 @@ export default function EditPlanPage({ params }: Props) {
       <PageHeader
         title="Media Plan"
         breadcrumbs={[
-          { label: 'Home' },
+          { label: 'Home', href: '/' },
           { label: 'Media Plans', href: '/media-plans' },
           { label: 'Edit Plan' },
         ]}
         action={
-          <div className="flex border border-[#E1E3EA] rounded-lg overflow-hidden">
+          <div className="flex rounded-lg overflow-hidden border border-[#DBDFE9]">
             {TABS.map((tab) => (
               <button
                 key={tab.value}
                 onClick={() => setView(tab.value)}
-                className={`px-4 py-2 text-sm font-medium transition-colors ${
+                className={`px-4 py-2 text-[13px] font-medium transition-all flex items-center gap-2 ${
                   view === tab.value
                     ? 'bg-[#1B84FF] text-white'
-                    : 'bg-white text-[#4B5675] hover:bg-[#F9F9F9]'
+                    : 'bg-white text-[#4B5675] hover:bg-[#F6F6F9]'
                 }`}
               >
+                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d={tab.icon} />
+                </svg>
                 {tab.label}
               </button>
             ))}
@@ -59,7 +62,7 @@ export default function EditPlanPage({ params }: Props) {
         }
       />
 
-      <div className="p-8 space-y-6">
+      <div className="p-6 lg:p-8 space-y-6">
         {view === 'builder' && (
           <>
             <MediaPlanBuilder groupId={id} />

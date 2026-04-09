@@ -380,7 +380,7 @@ export default function AnalyticsPage() {
       <PageHeader
         title="Benchmark Analytics"
         subtitle="Accuracy of projections vs actuals · Click any cell for details"
-        breadcrumbs={[{ label: 'Home' }, { label: 'Analytics' }]}
+        breadcrumbs={[{ label: 'Home', href: '/' }, { label: 'Analytics' }]}
         action={
           user?.role === 'admin' ? (
             <button
@@ -393,7 +393,7 @@ export default function AnalyticsPage() {
         }
       />
 
-      <div className="p-6 space-y-6">
+      <div className="p-6 lg:p-8 space-y-6">
       {toast && (
         <Toast
           message={toast.msg}

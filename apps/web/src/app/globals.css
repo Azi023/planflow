@@ -1,96 +1,208 @@
 @import "tailwindcss";
 
+/* ── Metronic v9.4.7 Design Tokens ─────────────────────────── */
 @theme {
+  /* Primary */
   --color-primary: #1B84FF;
   --color-primary-dark: #056EE9;
   --color-primary-light: #EEF6FF;
+  --color-primary-active: #1565C0;
+
+  /* Success */
   --color-success: #17C653;
-  --color-success-light: #DFFFEA;
-  --color-warning: #F6B100;
+  --color-success-light: #EAFFF1;
+  --color-success-dark: #04B440;
+
+  /* Warning */
+  --color-warning: #F6C000;
   --color-warning-light: #FFF8DD;
+  --color-warning-dark: #E5AD00;
+
+  /* Danger */
   --color-danger: #F8285A;
   --color-danger-light: #FFEEF3;
-  --color-page-bg: #F9F9F9;
+  --color-danger-dark: #E0103F;
+
+  /* Info */
+  --color-info: #7239EA;
+  --color-info-light: #F1EDFF;
+  --color-info-dark: #5B21D1;
+
+  /* Gray palette */
+  --color-gray-50: #FAFAFA;
+  --color-gray-100: #F9F9F9;
+  --color-gray-200: #F1F1F4;
+  --color-gray-300: #DBDFE9;
+  --color-gray-400: #B5B5C3;
+  --color-gray-500: #99A1B7;
+  --color-gray-600: #78829D;
+  --color-gray-700: #4B5675;
+  --color-gray-800: #252F4A;
+  --color-gray-900: #071437;
+
+  /* Semantic backgrounds */
+  --color-page-bg: #F6F6F9;
+  --color-card-bg: #FFFFFF;
+  --color-sidebar-bg: #1C2135;
+  --color-sidebar-hover: #242B41;
+  --color-topbar-bg: #FFFFFF;
+
+  /* Text */
   --color-text-primary: #071437;
   --color-text-secondary: #4B5675;
   --color-text-muted: #99A1B7;
+
+  /* Borders */
   --color-border: #E1E3EA;
   --color-border-light: #F1F1F4;
+
+  /* Shadows */
+  --shadow-card: 0px 3px 4px 0px rgba(0, 0, 0, 0.03);
+  --shadow-card-hover: 0px 4px 12px 0px rgba(0, 0, 0, 0.08);
+  --shadow-dropdown: 0px 10px 30px 0px rgba(0, 0, 0, 0.12);
+
+  /* Radius */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.625rem;
+  --radius-xl: 0.75rem;
 }
 
 :root {
-  --primary: #1B84FF;
-  --primary-dark: #056EE9;
-  --sidebar-width: 260px;
+  --sidebar-width: 264px;
+  --sidebar-collapsed-width: 80px;
+  --topbar-height: 64px;
 }
 
-/* ── Card (Metronic v9 style) ─────────────────────────────── */
+/* ── Base styles ─────────────────────────────────────────────── */
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 13px;
+  background-color: var(--color-page-bg);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* ── Custom scrollbar ────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #DBDFE9;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #B5B5C3;
+}
+
+/* ── Focus ring ──────────────────────────────────────────────── */
+*:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(27, 132, 255, 0.15);
+}
+
+/* ── Selection ───────────────────────────────────────────────── */
+::selection {
+  background-color: var(--color-primary-light);
+  color: var(--color-primary-dark);
+}
+
+/* ── Card (Metronic v9 style) ────────────────────────────────── */
 .card {
-  background: #ffffff;
-  border: 1px solid #E1E3EA;
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
-  box-shadow: 0px 3px 4px 0px rgba(0, 0, 0, 0.03);
+  box-shadow: var(--shadow-card);
 }
 
 .card-header {
   padding: 20px 24px 16px;
-  border-bottom: 1px solid #F1F1F4;
+  border-bottom: 1px solid var(--color-border-light);
 }
 
 .card-body {
   padding: 20px 24px;
 }
 
-/* ── Table (Metronic kt-table style) ──────────────────────── */
+/* ── Table (Metronic kt-table style) ─────────────────────────── */
 .kt-table thead tr th {
-  background-color: #F9F9F9;
+  background-color: var(--color-gray-100);
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #99A1B7;
+  color: var(--color-text-muted);
   padding: 10px 16px;
-  border-bottom: 1px solid #E1E3EA;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .kt-table tbody tr {
-  border-bottom: 1px solid #F1F1F4;
-  transition: background 0.1s;
+  border-bottom: 1px solid var(--color-border-light);
+  transition: background 0.15s ease;
 }
 
 .kt-table tbody tr:hover {
-  background-color: #F9F9F9;
+  background-color: var(--color-gray-50);
 }
 
 .kt-table tbody tr td {
   padding: 12px 16px;
-  font-size: 13.5px;
-  color: #071437;
+  font-size: 13px;
+  color: var(--color-text-primary);
 }
 
-body {
-  font-family: Inter, Arial, Helvetica, sans-serif;
-  background-color: #F9F9F9;
-  color: #071437;
-  -webkit-font-smoothing: antialiased;
+/* ── Skeleton pulse animation ────────────────────────────────── */
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
 }
 
-/* ── Print / Save as PDF ──────────────────────────────────── */
+.skeleton {
+  background-color: var(--color-gray-200);
+  border-radius: 4px;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+/* ── Transitions ─────────────────────────────────────────────── */
+.transition-sidebar {
+  transition: width 200ms ease, margin-left 200ms ease, padding-left 200ms ease;
+}
+
+/* ── Button press effect ─────────────────────────────────────── */
+.btn-press:active {
+  transform: scale(0.98);
+}
+
+/* ── Print / Save as PDF ─────────────────────────────────────── */
 @media print {
-  /* Hide chrome: sidebar, topbar, action buttons, modals */
-  aside,
-  nav,
-  header,
-  [data-print-hide] {
+  aside, nav, header, [data-print-hide] {
     display: none !important;
   }
 
-  /* Remove page background and shadows for clean print */
   body {
     background: white !important;
   }
 
-  /* Expand print content to full page width */
   [data-print-content] {
     margin: 0 !important;
     padding: 0 !important;
@@ -99,25 +211,11 @@ body {
     border-radius: 0 !important;
   }
 
-  /* Avoid page breaks inside rows */
   tr {
     break-inside: avoid;
   }
 
-  /* Ensure table headers repeat on each page */
   thead {
     display: table-header-group;
   }
-}
-
-/* ── Skeleton pulse animation ─────────────────────────────── */
-@keyframes skeleton-pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.4; }
-}
-
-.skeleton {
-  background-color: #F1F1F4;
-  border-radius: 4px;
-  animation: skeleton-pulse 1.5s ease-in-out infinite;
 }

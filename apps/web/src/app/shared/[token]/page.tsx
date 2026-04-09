@@ -153,27 +153,27 @@ export default function SharedPlanPage({ params }: { params: { token: string } }
   const totalClicks = sumKpi('clicks');
 
   return (
-    <div className="min-h-screen bg-[#F5F7FA]">
+    <div className="min-h-screen bg-[#F6F6F9]">
       {/* Agency header */}
-      <div className="bg-white border-b border-[#E1E3EA] px-6 py-4">
-        <div className="max-w-4xl mx-auto flex items-center gap-3">
-          <div className="w-8 h-8 bg-[#006098] rounded-[6px] flex items-center justify-center">
-            <span className="text-white text-xs font-bold">DC</span>
+      <div className="bg-white border-b border-[#E1E3EA] px-6 py-4 sticky top-0 z-10">
+        <div className="max-w-[960px] mx-auto flex items-center gap-3">
+          <div className="w-9 h-9 bg-[#1B84FF] rounded-xl flex items-center justify-center">
+            <span className="text-white text-[13px] font-bold tracking-tight">PF</span>
           </div>
           <div>
-            <span className="text-sm font-semibold text-[#071437]">DC Group</span>
-            <span className="text-sm text-[#99A1B7] mx-1">|</span>
-            <span className="text-sm text-[#4B5675]">Jasmin Media</span>
+            <span className="text-[14px] font-semibold text-[#071437]">PlanFlow</span>
+            <span className="text-[13px] text-[#99A1B7] mx-2">|</span>
+            <span className="text-[13px] text-[#4B5675]">Jasmin Media</span>
           </div>
           <div className="ml-auto">
-            <span className="text-xs text-[#99A1B7]">Media Plan Proposal</span>
+            <span className="text-[12px] text-[#99A1B7]">Media Plan Proposal</span>
           </div>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+      <div className="max-w-[960px] mx-auto px-4 py-8 space-y-6">
         {/* Campaign info card */}
-        <div className="bg-white rounded-[12px] border border-[#E1E3EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-6">
+        <div className="bg-white rounded-[12px] border border-[#E1E3EA] shadow-[0px_3px_4px_0px_rgba(0,0,0,0.03)] p-6">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
               <h1 className="text-xl font-bold text-[#071437]">
@@ -244,7 +244,7 @@ export default function SharedPlanPage({ params }: { params: { token: string } }
           ].map((card) => (
             <div
               key={card.label}
-              className="bg-white rounded-[12px] border border-[#E1E3EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-4"
+              className="bg-white rounded-[12px] border border-[#E1E3EA] shadow-[0px_3px_4px_0px_rgba(0,0,0,0.03)] p-4"
             >
               <p className="text-[11px] text-[#99A1B7] font-medium uppercase tracking-wide">{card.label}</p>
               <p
@@ -262,7 +262,7 @@ export default function SharedPlanPage({ params }: { params: { token: string } }
 
         {/* Platform breakdown table */}
         {plan.rows.length > 0 && (
-          <div className="bg-white rounded-[12px] border border-[#E1E3EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
+          <div className="bg-white rounded-[12px] border border-[#E1E3EA] shadow-[0px_3px_4px_0px_rgba(0,0,0,0.03)] overflow-hidden">
             <div className="px-6 py-4 border-b border-[#F1F1F4]">
               <h2 className="text-sm font-semibold text-[#071437]">Platform Breakdown</h2>
             </div>
@@ -342,14 +342,14 @@ export default function SharedPlanPage({ params }: { params: { token: string } }
 
         {/* Notes */}
         {plan.notes && (
-          <div className="bg-white rounded-[12px] border border-[#E1E3EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-6">
+          <div className="bg-white rounded-[12px] border border-[#E1E3EA] shadow-[0px_3px_4px_0px_rgba(0,0,0,0.03)] p-6">
             <h2 className="text-sm font-semibold text-[#071437] mb-3">Notes & Recommendations</h2>
             <p className="text-sm text-[#4B5675] whitespace-pre-wrap leading-relaxed">{plan.notes}</p>
           </div>
         )}
 
         {/* Leave a comment */}
-        <div className="bg-white rounded-[12px] border border-[#E1E3EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-6">
+        <div className="bg-white rounded-[12px] border border-[#E1E3EA] shadow-[0px_3px_4px_0px_rgba(0,0,0,0.03)] p-6">
           <h2 className="text-sm font-semibold text-[#071437] mb-4">Leave a Comment</h2>
           <form onSubmit={handleSubmitComment} className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -414,7 +414,7 @@ export default function SharedPlanPage({ params }: { params: { token: string } }
 
         {/* Previous comments */}
         {plan.comments.length > 0 && (
-          <div className="bg-white rounded-[12px] border border-[#E1E3EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-6">
+          <div className="bg-white rounded-[12px] border border-[#E1E3EA] shadow-[0px_3px_4px_0px_rgba(0,0,0,0.03)] p-6">
             <h2 className="text-sm font-semibold text-[#071437] mb-4">
               Comments ({plan.comments.length})
             </h2>

@@ -1424,7 +1424,7 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
 
   if (initialLoading) {
     return (
-      <div className="bg-white rounded-[8px] border border-[#E1E3EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-8 text-center">
+      <div className="card p-8 text-center">
         <div className="flex items-center justify-center gap-2 text-[#99A1B7] text-sm">
           <div className="w-4 h-4 border-2 border-[#1B84FF]/30 border-t-[#1B84FF] rounded-full animate-spin" />
           Loading plan…
@@ -1445,7 +1445,7 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
         onClose={() => setShowAiPanel(false)}
       />
     )}
-    <div data-print-content className="bg-white rounded-[8px] border border-[#E1E3EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+    <div data-print-content className="card">
       {showTemplateModal && (
         <SaveTemplateModal
           campaignName={header.campaignName}

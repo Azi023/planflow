@@ -124,20 +124,20 @@ export default function PlansListPage() {
     <>
       <PageHeader
         title="Media Plans"
-        subtitle="Manage and build client media plans"
-        breadcrumbs={[{ label: 'Home' }, { label: 'Media Plans' }]}
+        subtitle="Manage and track your media planning campaigns"
+        breadcrumbs={[{ label: 'Home', href: '/' }, { label: 'Media Plans' }]}
         action={
           <button
             onClick={() => router.push('/media-plans/new')}
-            className="bg-[#1B84FF] text-white rounded-lg px-5 py-2.5 text-sm font-medium hover:bg-[#056EE9] transition-colors flex items-center gap-2 shadow-sm"
+            className="bg-[#1B84FF] text-white rounded-lg px-5 py-2.5 text-[13px] font-medium hover:bg-[#056EE9] active:scale-[0.98] transition-all flex items-center gap-2"
           >
-            <span className="text-base leading-none">+</span>
+            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
             New Plan
           </button>
         }
       />
 
-      <div className="p-8">
+      <div className="p-6 lg:p-8">
       {/* Error */}
       {error && (
         <div className="bg-[#FFEEF3] border border-[#F8285A]/20 rounded-lg px-4 py-3 text-sm text-[#F8285A] mb-4">
@@ -151,22 +151,36 @@ export default function PlansListPage() {
         <div className="px-6 py-4 border-b border-[#F1F1F4]">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-3">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => handleSearchChange(e.target.value)}
-                placeholder="Search campaigns, clients, ref #..."
-                className="w-72 border border-[#E1E3EA] rounded-[6px] px-3 py-2 text-sm focus:outline-none focus:border-[#1B84FF] transition-colors"
-              />
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#B5B5C3]">
+                  <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" /></svg>
+                </div>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  placeholder="Search campaigns, clients, ref #..."
+                  className="w-72 border border-[#DBDFE9] rounded-lg pl-9 pr-3 py-2.5 text-[13px] text-[#071437] placeholder-[#B5B5C3] focus:outline-none focus:border-[#1B84FF] focus:ring-1 focus:ring-[#1B84FF]/20 transition"
+                />
+              </div>
               <select
                 value={statusFilter}
                 onChange={(e) => handleStatusChange(e.target.value)}
-                className="border border-[#E1E3EA] rounded-[6px] px-3 py-2 text-sm text-[#4B5675] focus:outline-none focus:border-[#1B84FF] transition-colors"
+                className="border border-[#DBDFE9] rounded-lg px-3 py-2.5 text-[13px] text-[#4B5675] focus:outline-none focus:border-[#1B84FF] focus:ring-1 focus:ring-[#1B84FF]/20 transition"
               >
                 {STATUS_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
+              {(searchQuery || statusFilter !== 'all') && (
+                <button
+                  onClick={() => { setSearchQuery(''); setStatusFilter('all'); }}
+                  className="text-[12px] text-[#99A1B7] hover:text-[#F8285A] transition-colors flex items-center gap-1"
+                >
+                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                  Clear
+                </button>
+              )}
             </div>
             <span className="text-sm text-[#99A1B7]">
               {loading ? 'Loading…' : `${filteredGroups.length} plan${filteredGroups.length !== 1 ? 's' : ''}`}

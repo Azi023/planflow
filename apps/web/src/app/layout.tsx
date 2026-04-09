@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { Sidebar } from "@/components/Sidebar";
+import { Sidebar, SidebarProvider } from "@/components/Sidebar";
 import { SidebarLayout } from "@/components/SidebarLayout";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -20,12 +20,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.className} h-full antialiased`}>
-      <body className="min-h-full bg-[#F9F9F9]">
+      <body className="min-h-full bg-page-bg">
         <AuthProvider>
-          <Sidebar />
-          <SidebarLayout>
-            <ProtectedRoute>{children}</ProtectedRoute>
-          </SidebarLayout>
+          <SidebarProvider>
+            <Sidebar />
+            <SidebarLayout>
+              <ProtectedRoute>{children}</ProtectedRoute>
+            </SidebarLayout>
+          </SidebarProvider>
         </AuthProvider>
       </body>
     </html>

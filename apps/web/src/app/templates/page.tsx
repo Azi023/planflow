@@ -333,7 +333,7 @@ export default function TemplatesPage() {
       <PageHeader
         title="Plan Templates"
         subtitle="Reusable plan structures for faster media plan creation"
-        breadcrumbs={[{ label: 'Home' }, { label: 'Templates' }]}
+        breadcrumbs={[{ label: 'Home', href: '/' }, { label: 'Templates' }]}
         action={
           <button
             onClick={() => router.push('/media-plans/new')}
@@ -345,7 +345,7 @@ export default function TemplatesPage() {
         }
       />
 
-      <main className="p-8">
+      <main className="p-6 lg:p-8">
       {usingTemplate && (
         <UseTemplateModal
           template={usingTemplate}

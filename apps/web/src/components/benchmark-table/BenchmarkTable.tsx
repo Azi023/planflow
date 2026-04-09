@@ -472,7 +472,7 @@ export default function BenchmarkTable() {
   })).filter((g) => g.items.length > 0);
 
   return (
-    <div className="bg-white rounded-[8px] border border-[#E1E3EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+    <div className="card">
       {toast && (
         <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
       )}

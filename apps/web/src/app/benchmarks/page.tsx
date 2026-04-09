@@ -7,9 +7,9 @@ export default function BenchmarksPage() {
       <PageHeader
         title="KPI Benchmarks"
         subtitle="Reference rates for media planning · Double-click any cell to edit"
-        breadcrumbs={[{ label: 'Home' }, { label: 'Benchmarks' }]}
+        breadcrumbs={[{ label: 'Home', href: '/' }, { label: 'Benchmarks' }]}
       />
-      <div className="p-8">
+      <div className="p-6 lg:p-8">
         <BenchmarkTable />
       </div>
     </>

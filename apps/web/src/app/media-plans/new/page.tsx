@@ -9,12 +9,12 @@ export default function NewPlanPage() {
         title="New Media Plan"
         subtitle="Build a campaign plan and calculate projected KPIs"
         breadcrumbs={[
-          { label: 'Home' },
+          { label: 'Home', href: '/' },
           { label: 'Media Plans', href: '/media-plans' },
           { label: 'New Plan' },
         ]}
       />
-      <div className="p-8 space-y-6">
+      <div className="p-6 lg:p-8 space-y-6">
         <MediaPlanBuilder />
         <TestCalculator />
       </div>
