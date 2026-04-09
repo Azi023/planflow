@@ -137,6 +137,7 @@ function UseTemplateModal({ template, clients, onClose, onCreated }: UseTemplate
               >
                 <option value="LKR">LKR</option>
                 <option value="USD">USD</option>
+                <option value="AED">AED</option>
               </select>
               <input
                 type="number"

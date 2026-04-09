@@ -972,6 +972,14 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
               convertedBudget = parseFloat(row.budget) / rate;
             } else if (planCurrency === 'USD' && benchCurrency === 'LKR') {
               convertedBudget = parseFloat(row.budget) * rate;
+            } else if (planCurrency === 'AED' && benchCurrency === 'USD') {
+              convertedBudget = parseFloat(row.budget) / (rate || 3.67);
+            } else if (planCurrency === 'AED' && benchCurrency === 'LKR') {
+              convertedBudget = parseFloat(row.budget) * (rate || 80);
+            } else if (planCurrency === 'LKR' && benchCurrency === 'AED') {
+              convertedBudget = parseFloat(row.budget) / (rate || 80);
+            } else if (planCurrency === 'USD' && benchCurrency === 'AED') {
+              convertedBudget = parseFloat(row.budget) * (rate || 3.67);
             }
             try {
               const convertedRaw = await calculateKpis({
@@ -1597,6 +1605,7 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
                 >
                   <option value="LKR">LKR</option>
                   <option value="USD">USD</option>
+                  <option value="AED">AED</option>
                 </select>
                 <input
                   type="number"

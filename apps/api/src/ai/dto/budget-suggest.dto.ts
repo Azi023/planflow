@@ -12,7 +12,7 @@ export class BudgetSuggestDto {
   budget: number;
 
   @IsString()
-  @IsIn(['LKR', 'USD'])
+  @IsIn(['LKR', 'USD', 'AED'])
   currency: string;
 
   @IsString()

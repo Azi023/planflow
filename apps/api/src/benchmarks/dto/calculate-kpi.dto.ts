@@ -20,6 +20,6 @@ export class CalculateKpiDto {
 
   @IsOptional()
   @IsString()
-  @IsIn(['LKR', 'USD'])
+  @IsIn(['LKR', 'USD', 'AED'])
   currency?: string;
 }
