@@ -147,7 +147,7 @@ Rules:
 
     const response = await claude.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 1024,
+      max_tokens: 4096,
       messages: [{ role: 'user', content: userPrompt }],
       system: systemPrompt,
     });
@@ -161,7 +161,25 @@ Rules:
       throw new Error('Claude returned an unexpected response format');
     }
 
-    const parsed = JSON.parse(jsonMatch[0]) as Omit<
+    // Strip trailing commas and fix truncated JSON from token limits
+    let cleaned = jsonMatch[0]
+      .replace(/,\s*]/g, ']')
+      .replace(/,\s*}/g, '}');
+    // If JSON is truncated (incomplete string), try to close it
+    try {
+      JSON.parse(cleaned);
+    } catch {
+      // Truncate at last complete key-value, close all brackets
+      const lastComplete = cleaned.lastIndexOf('",');
+      if (lastComplete > 0) {
+        cleaned = cleaned.substring(0, lastComplete + 1);
+      }
+      // Close any open strings, arrays, objects
+      const opens = (cleaned.match(/\{/g) || []).length;
+      const closes = (cleaned.match(/\}/g) || []).length;
+      for (let i = 0; i < opens - closes; i++) cleaned += '}';
+    }
+    const parsed = JSON.parse(cleaned) as Omit<
       BudgetSuggestionResult,
       'generatedAt'
     >;
@@ -245,7 +263,7 @@ Only return plans that genuinely match. If fewer than ${limit} plans are truly s
 
     const response = await claude.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 1024,
+      max_tokens: 4096,
       messages: [{ role: 'user', content: userPrompt }],
       system: systemPrompt,
     });
@@ -257,6 +275,9 @@ Only return plans that genuinely match. If fewer than ${limit} plans are truly s
       throw new Error('Claude returned an unexpected response format');
     }
 
-    return JSON.parse(jsonMatch[0]) as SimilarCampaignsResult;
+    const cleaned2 = jsonMatch[0]
+      .replace(/,\s*]/g, ']')
+      .replace(/,\s*}/g, '}');
+    return JSON.parse(cleaned2) as SimilarCampaignsResult;
   }
 }
