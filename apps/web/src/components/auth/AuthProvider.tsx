@@ -51,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!isLoading && !user && pathname !== '/login') {
+    if (!isLoading && !user && pathname !== '/login' && !pathname.startsWith('/shared/')) {
       router.replace('/login');
     }
   }, [isLoading, user, pathname, router]);

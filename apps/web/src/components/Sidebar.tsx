@@ -129,7 +129,7 @@ export function Sidebar() {
         {NAV_GROUPS.map((group) => (
           <div key={group.title} className="mb-4">
             {!collapsed && (
-              <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest px-3 pb-2 mb-1">
+              <p className="text-[10px] font-semibold text-[#78829D] uppercase tracking-wider px-4 pb-2 mt-2 mb-1">
                 {group.title}
               </p>
             )}
@@ -142,19 +142,17 @@ export function Sidebar() {
                     key={href}
                     href={href}
                     title={collapsed ? label : undefined}
-                    className={`flex items-center gap-3 rounded-lg text-[13px] font-medium transition-colors duration-150 ${
+                    className={`relative flex items-center gap-3 rounded-lg text-[13px] font-medium transition-all duration-150 ${
                       collapsed ? 'justify-center px-0 py-2.5' : 'px-3 py-2.5'
                     } ${
                       isActive
-                        ? 'bg-[#1B84FF]/20 text-white'
+                        ? 'bg-[#1B84FF]/15 text-white'
                         : 'text-[#99A1B7] hover:text-white hover:bg-white/5'
                     }`}
                   >
+                    {isActive && <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r bg-[#1B84FF]" />}
                     <Icon d={ICONS[icon]} />
                     {!collapsed && <span className="flex-1 truncate">{label}</span>}
-                    {!collapsed && isActive && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#1B84FF] shrink-0" />
-                    )}
                   </Link>
                 );
               })}

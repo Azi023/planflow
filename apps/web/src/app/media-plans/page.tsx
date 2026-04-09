@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { fetchPlans, deletePlan, duplicatePlan } from '@/lib/api';
-import type { MediaPlan } from '@/lib/types';
+import { fetchPlans, fetchClients, deletePlan, duplicatePlan } from '@/lib/api';
+import type { MediaPlan, Client } from '@/lib/types';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { PageHeader } from '@/components/PageHeader';
@@ -39,6 +39,8 @@ export default function PlansListPage() {
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [clientFilter, setClientFilter] = useState('all');
+  const [clients, setClients] = useState<Client[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const isAdmin = user?.role === 'admin';
 
@@ -47,6 +49,7 @@ export default function PlansListPage() {
       .then(setPlans)
       .catch(() => setError('Failed to load plans'))
       .finally(() => setLoading(false));
+    fetchClients().then(setClients).catch(() => {});
   }, []);
 
   // Deduplicate by variantGroupId — show one row per group (the first/primary variant)
@@ -67,7 +70,8 @@ export default function PlansListPage() {
       (p.client?.name?.toLowerCase().includes(q)) ||
       (p.referenceNumber?.toLowerCase().includes(q));
     const matchesStatus = statusFilter === 'all' || p.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesClient = clientFilter === 'all' || p.clientId === clientFilter;
+    return matchesSearch && matchesStatus && matchesClient;
   });
 
   const totalPages = Math.ceil(filteredGroups.length / PLANS_PER_PAGE);
@@ -172,9 +176,19 @@ export default function PlansListPage() {
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
-              {(searchQuery || statusFilter !== 'all') && (
+              <select
+                value={clientFilter}
+                onChange={(e) => { setClientFilter(e.target.value); setCurrentPage(1); }}
+                className="border border-[#DBDFE9] rounded-lg px-3 py-2.5 text-[13px] text-[#4B5675] focus:outline-none focus:border-[#1B84FF] focus:ring-1 focus:ring-[#1B84FF]/20 transition"
+              >
+                <option value="all">All Clients</option>
+                {clients.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+              {(searchQuery || statusFilter !== 'all' || clientFilter !== 'all') && (
                 <button
-                  onClick={() => { setSearchQuery(''); setStatusFilter('all'); }}
+                  onClick={() => { setSearchQuery(''); setStatusFilter('all'); setClientFilter('all'); }}
                   className="text-[12px] text-[#99A1B7] hover:text-[#F8285A] transition-colors flex items-center gap-1"
                 >
                   <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
@@ -224,7 +238,7 @@ export default function PlansListPage() {
                         <>
                           <p className="text-sm font-medium text-[#4B5675]">No plans match your filters</p>
                           <button
-                            onClick={() => { setSearchQuery(''); setStatusFilter('all'); }}
+                            onClick={() => { setSearchQuery(''); setStatusFilter('all'); setClientFilter('all'); }}
                             className="text-[#1B84FF] text-sm hover:underline"
                           >
                             Clear filters
@@ -257,7 +271,10 @@ export default function PlansListPage() {
                     {plan.referenceNumber ?? '—'}
                   </td>
                   <td className="px-4 py-3.5 font-medium text-[#071437]">
-                    {plan.campaignName ?? <span className="text-[#99A1B7] italic font-normal">Untitled</span>}
+                    {plan.campaignName
+                      ? plan.campaignName
+                      : <span className="text-[#4B5675] font-normal">Draft Plan {plan.referenceNumber ? `— ${plan.referenceNumber}` : ''}</span>
+                    }
                   </td>
                   <td className="px-4 py-3.5 text-[#4B5675] text-sm">{plan.client?.name ?? '—'}</td>
                   <td className="px-4 py-3.5 text-[#4B5675] text-sm">{plan.product?.name ?? '—'}</td>

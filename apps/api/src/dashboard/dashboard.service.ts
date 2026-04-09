@@ -86,9 +86,10 @@ export class DashboardService {
       order: { createdAt: 'DESC' },
     });
 
-    // Deduplicate by variantGroupId
+    // Deduplicate by variantGroupId, exclude placeholder plans
     const groupMap = new Map<string, MediaPlan[]>();
     for (const plan of allPlans) {
+      if (plan.campaignName?.includes('Meta Historical Actuals')) continue;
       const key = plan.variantGroupId ?? plan.id;
       const group = groupMap.get(key) ?? [];
       group.push(plan);
@@ -159,17 +160,36 @@ export class DashboardService {
       clientPlanData.set(primary.clientId, entry);
     }
 
+    // Aggregate actual spend per client from campaign_actuals
+    const actualsSpendByClient = new Map<string, number>();
+    const actualsRows = await this.actualRepo
+      .createQueryBuilder('a')
+      .innerJoin('a.plan', 'plan')
+      .select('plan.client_id', 'clientId')
+      .addSelect('SUM(CAST(a.actual_spend AS numeric))', 'totalSpend')
+      .where('a.actual_spend IS NOT NULL')
+      .andWhere('plan.client_id IS NOT NULL')
+      .groupBy('plan.client_id')
+      .getRawMany<{ clientId: string; totalSpend: string }>();
+    for (const row of actualsRows) {
+      actualsSpendByClient.set(row.clientId, Number(row.totalSpend) || 0);
+    }
+
     const clientSummary: ClientSummaryItem[] = allClients
       .map((client) => {
         const planData = clientPlanData.get(client.id) ?? {
           planCount: 0,
           totalBudget: 0,
         };
+        const actualSpend = actualsSpendByClient.get(client.id) ?? 0;
+        // Use plan budget if available, otherwise fall back to actual spend
+        const budget =
+          planData.totalBudget > 0 ? planData.totalBudget : actualSpend;
         return {
           clientId: client.id,
           clientName: client.name,
           planCount: planData.planCount,
-          totalBudget: planData.totalBudget,
+          totalBudget: budget,
           productCount: productCountByClient.get(client.id) ?? 0,
         };
       })
@@ -194,11 +214,24 @@ export class DashboardService {
         totalBudget: string;
       }>();
 
-    const platformBreakdown: PlatformBreakdownItem[] = rows.map((r) => ({
-      platform: r.platform,
-      planCount: Number(r.planCount),
-      totalBudget: Number(r.totalBudget) || 0,
-    }));
+    // Aggregate rows that share the same platform
+    const platformMap = new Map<string, PlatformBreakdownItem>();
+    for (const r of rows) {
+      const existing = platformMap.get(r.platform);
+      if (existing) {
+        existing.planCount += Number(r.planCount);
+        existing.totalBudget += Number(r.totalBudget) || 0;
+      } else {
+        platformMap.set(r.platform, {
+          platform: r.platform,
+          planCount: Number(r.planCount),
+          totalBudget: Number(r.totalBudget) || 0,
+        });
+      }
+    }
+    const platformBreakdown = Array.from(platformMap.values()).sort(
+      (a, b) => b.totalBudget - a.totalBudget,
+    );
 
     // Campaign delivery for approved/sent plans
     const activePlans = await this.planRepo.find({
@@ -206,8 +239,13 @@ export class DashboardService {
       relations: ['client', 'rows'],
     });
 
+    // Filter out placeholder plans from campaign delivery
+    const realActivePlans = activePlans.filter(
+      (p) => !p.campaignName?.includes('Meta Historical Actuals'),
+    );
+
     const campaignDelivery: CampaignDeliveryItem[] = await Promise.all(
-      activePlans.map(async (plan) => {
+      realActivePlans.map(async (plan) => {
         const actuals = await this.actualRepo.find({
           where: { planId: plan.id },
         });
