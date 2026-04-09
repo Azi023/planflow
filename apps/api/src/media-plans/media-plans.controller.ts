@@ -53,37 +53,53 @@ export class MediaPlansController {
   }
 
   @Post()
-  create(@Body() dto: CreatePlanDto) {
-    return this.mediaPlansService.create(dto);
+  create(
+    @Body() dto: CreatePlanDto,
+    @Req() req: { user: { sub: string; email: string } },
+  ) {
+    return this.mediaPlansService.create(dto, req.user.sub, req.user.email);
   }
 
   @Put(':id')
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: CreatePlanDto) {
-    return this.mediaPlansService.update(id, dto);
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CreatePlanDto,
+    @Req() req: { user: { sub: string } },
+  ) {
+    return this.mediaPlansService.update(id, dto, req.user.sub);
   }
 
   @Patch(':id/status')
   updateStatus(
     @Param('id', ParseUUIDPipe) id: string,
     @Body('status') status: string,
-    @Req() req: { user: { role: string } },
+    @Req() req: { user: { sub: string; role: string; email: string } },
   ) {
-    return this.mediaPlansService.updateStatus(id, status, req.user.role);
+    return this.mediaPlansService.updateStatus(
+      id,
+      status,
+      req.user.role,
+      req.user.sub,
+      req.user.email,
+    );
   }
 
   @Post(':id/duplicate')
-  duplicate(@Param('id', ParseUUIDPipe) id: string) {
-    return this.mediaPlansService.duplicate(id);
+  duplicate(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: { user: { sub: string } },
+  ) {
+    return this.mediaPlansService.duplicate(id, req.user.sub);
   }
 
   @Post(':id/rows/bulk')
   bulkUpsertRows(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: any,
+    @Req() req: { user: { sub: string } },
   ) {
-    // Accept both [...] (array) and {rows: [...]} (object) formats
     const rows = Array.isArray(body) ? body : body?.rows ?? [];
-    return this.mediaPlansService.bulkUpsertRows(id, rows);
+    return this.mediaPlansService.bulkUpsertRows(id, rows, req.user.sub);
   }
 
   @Delete(':id/rows/bulk')
@@ -98,16 +114,24 @@ export class MediaPlansController {
   @Delete(':id')
   @Roles('admin')
   @HttpCode(204)
-  delete(@Param('id', ParseUUIDPipe) id: string) {
-    return this.mediaPlansService.delete(id);
+  delete(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: { user: { sub: string } },
+  ) {
+    return this.mediaPlansService.delete(id, req.user.sub);
   }
 
+  // ── Sharing ─────────────────────────────────────────────────
+
   @Post(':id/share')
-  enableSharing(
+  async enableSharing(
     @Param('id', ParseUUIDPipe) id: string,
     @Body('expiresInDays') expiresInDays?: number,
+    @Req() req?: { user: { sub: string } },
   ) {
-    return this.sharingService.enableSharing(id, expiresInDays);
+    const result = await this.sharingService.enableSharing(id, expiresInDays);
+    this.mediaPlansService.recordShare(id, req?.user?.sub).catch(() => {});
+    return result;
   }
 
   @Delete(':id/share')
@@ -124,5 +148,39 @@ export class MediaPlansController {
   @Patch(':id/comments/read')
   markCommentsRead(@Param('id', ParseUUIDPipe) id: string) {
     return this.sharingService.markCommentsRead(id);
+  }
+
+  // ── Version control ─────────────────────────────────────────
+
+  @Get(':id/versions')
+  getVersions(@Param('id', ParseUUIDPipe) id: string) {
+    return this.mediaPlansService.getVersions(id);
+  }
+
+  @Get(':id/versions/diff')
+  diffVersions(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('v1') v1: string,
+    @Query('v2') v2: string,
+  ) {
+    return this.mediaPlansService.diffVersions(id, v1, v2);
+  }
+
+  @Get(':id/versions/:versionId')
+  getVersion(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('versionId', ParseUUIDPipe) versionId: string,
+  ) {
+    return this.mediaPlansService.getVersion(id, versionId);
+  }
+
+  @Post(':id/versions/:versionId/restore')
+  @Roles('admin', 'planner')
+  restoreVersion(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('versionId', ParseUUIDPipe) versionId: string,
+    @Req() req: { user: { sub: string } },
+  ) {
+    return this.mediaPlansService.restoreVersion(id, versionId, req.user.sub);
   }
 }

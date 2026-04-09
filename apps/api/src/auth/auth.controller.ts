@@ -1,4 +1,12 @@
-import { Controller, Post, Get, Body, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Ip,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import {
   IsEmail,
   IsString,
@@ -7,6 +15,7 @@ import {
   IsIn,
 } from 'class-validator';
 import { AuthService } from './auth.service';
+import { AuditService } from '../audit/audit.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { Public } from './public.decorator';
 
@@ -41,12 +50,25 @@ interface AuthRequest {
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly auditService: AuditService,
+  ) {}
 
   @Public()
   @Post('login')
-  login(@Body() body: LoginDto) {
-    return this.authService.login(body.email, body.password);
+  async login(@Body() body: LoginDto, @Ip() ip: string) {
+    const result = await this.authService.login(body.email, body.password);
+    this.auditService.log(
+      'user.login',
+      'user',
+      result.user.id,
+      result.user.id,
+      { email: body.email },
+      ip,
+      body.email,
+    );
+    return result;
   }
 
   @Public()

@@ -16,6 +16,7 @@ import {
 import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { BenchmarksService } from './benchmarks.service';
+import { AuditService } from '../audit/audit.service';
 import { UpdateBenchmarkDto } from './dto/update-benchmark.dto';
 import { CalculateKpiDto } from './dto/calculate-kpi.dto';
 import { Roles } from '../auth/roles.decorator';
@@ -27,7 +28,10 @@ interface AuthRequest extends Request {
 
 @Controller('benchmarks')
 export class BenchmarksController {
-  constructor(private readonly benchmarksService: BenchmarksService) {}
+  constructor(
+    private readonly benchmarksService: BenchmarksService,
+    private readonly auditService: AuditService,
+  ) {}
 
   @Get()
   findAll(
@@ -69,7 +73,6 @@ export class BenchmarksController {
     return this.benchmarksService.rejectSuggestion(id);
   }
 
-
   @Get('export')
   async exportCsv(
     @Query('audienceType') audienceType: string,
@@ -95,13 +98,26 @@ export class BenchmarksController {
 
   @Patch(':id')
   @Roles('admin')
-  update(
+  async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateBenchmarkDto,
     @Req() req: AuthRequest,
   ) {
     const changedBy = req.user?.name ?? req.user?.id ?? null;
-    return this.benchmarksService.update(id, dto, changedBy ?? undefined, 'manual');
+    const result = await this.benchmarksService.update(
+      id,
+      dto,
+      changedBy ?? undefined,
+      'manual',
+    );
+    this.auditService.log(
+      'benchmark.updated',
+      'benchmark',
+      id,
+      req.user?.id ?? null,
+      { changedBy, fields: Object.keys(dto) },
+    );
+    return result;
   }
 
   @Post('calculate')
@@ -112,7 +128,20 @@ export class BenchmarksController {
   @Post('import')
   @Roles('admin')
   @UseInterceptors(FileInterceptor('file'))
-  importCsv(@UploadedFile() file: Express.Multer.File) {
-    return this.benchmarksService.importCsv(file.buffer.toString('utf-8'));
+  async importCsv(
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: AuthRequest,
+  ) {
+    const result = await this.benchmarksService.importCsv(
+      file.buffer.toString('utf-8'),
+    );
+    this.auditService.log(
+      'benchmark.imported',
+      'benchmark',
+      null,
+      req.user?.id ?? null,
+      { imported: result.imported, updated: result.updated },
+    );
+    return result;
   }
 }

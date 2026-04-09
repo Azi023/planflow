@@ -1,17 +1,29 @@
-import { Controller, Get, Param, Res } from '@nestjs/common';
+import { Controller, Get, Param, Req, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { ExportService } from './export.service';
+import { AuditService } from '../audit/audit.service';
 
 @Controller('media-plans')
 export class ExportController {
-  constructor(private readonly exportService: ExportService) {}
+  constructor(
+    private readonly exportService: ExportService,
+    private readonly auditService: AuditService,
+  ) {}
 
   @Get(':id/export/excel')
   async exportExcel(
     @Param('id') id: string,
     @Res() res: Response,
+    @Req() req: { user?: { sub?: string } },
   ): Promise<void> {
     const { buffer, filename } = await this.exportService.exportExcel(id);
+    this.auditService.log(
+      'plan.exported',
+      'media_plan',
+      id,
+      req.user?.sub ?? null,
+      { format: 'excel' },
+    );
     res.set({
       'Content-Type':
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -25,8 +37,16 @@ export class ExportController {
   async exportPptx(
     @Param('id') id: string,
     @Res() res: Response,
+    @Req() req: { user?: { sub?: string } },
   ): Promise<void> {
     const { buffer, filename } = await this.exportService.exportPptx(id);
+    this.auditService.log(
+      'plan.exported',
+      'media_plan',
+      id,
+      req.user?.sub ?? null,
+      { format: 'pptx' },
+    );
     res.set({
       'Content-Type':
         'application/vnd.openxmlformats-officedocument.presentationml.presentation',
@@ -40,8 +60,16 @@ export class ExportController {
   async exportPdf(
     @Param('id') id: string,
     @Res() res: Response,
+    @Req() req: { user?: { sub?: string } },
   ): Promise<void> {
     const { buffer, filename } = await this.exportService.exportPdf(id);
+    this.auditService.log(
+      'plan.exported',
+      'media_plan',
+      id,
+      req.user?.sub ?? null,
+      { format: 'pdf' },
+    );
     res.set({
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="${filename}"`,
@@ -49,5 +77,4 @@ export class ExportController {
     });
     res.end(buffer);
   }
-
 }

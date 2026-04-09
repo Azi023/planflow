@@ -5,11 +5,14 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ILike, Like, Repository } from 'typeorm';
+import { Like, Repository } from 'typeorm';
 import { MediaPlan } from '../entities/media-plan.entity';
 import { MediaPlanRow } from '../entities/media-plan-row.entity';
 import { Benchmark } from '../entities/benchmark.entity';
+import { PlanVersion } from '../entities/plan-version.entity';
 import { BenchmarksService } from '../benchmarks/benchmarks.service';
+import { AuditService } from '../audit/audit.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreatePlanDto } from './dto/create-plan.dto';
 
 @Injectable()
@@ -21,8 +24,189 @@ export class MediaPlansService {
     private readonly rowRepo: Repository<MediaPlanRow>,
     @InjectRepository(Benchmark)
     private readonly benchmarkRepo: Repository<Benchmark>,
+    @InjectRepository(PlanVersion)
+    private readonly versionRepo: Repository<PlanVersion>,
     private readonly benchmarksService: BenchmarksService,
+    private readonly auditService: AuditService,
+    private readonly notifications: NotificationsService,
   ) {}
+
+  // ── Version control ─────────────────────────────────────────────
+
+  async createVersion(
+    planId: string,
+    changeType: string,
+    changeSummary: string | null,
+    userId?: string | null,
+  ): Promise<PlanVersion> {
+    const plan = await this.planRepo.findOne({
+      where: { id: planId },
+      relations: ['client', 'product', 'rows'],
+    });
+    if (!plan) throw new NotFoundException(`Plan ${planId} not found`);
+
+    const lastVersion = await this.versionRepo
+      .createQueryBuilder('v')
+      .where('v.plan_id = :planId', { planId })
+      .orderBy('v.version_number', 'DESC')
+      .getOne();
+
+    const versionNumber = (lastVersion?.versionNumber ?? 0) + 1;
+
+    const snapshot = {
+      campaignName: plan.campaignName,
+      clientId: plan.clientId,
+      clientName: plan.client?.name ?? null,
+      productId: plan.productId,
+      productName: plan.product?.name ?? null,
+      totalBudget: plan.totalBudget,
+      currency: plan.currency,
+      status: plan.status,
+      fee1Pct: plan.fee1Pct,
+      fee1Label: plan.fee1Label,
+      fee2Pct: plan.fee2Pct,
+      fee2Label: plan.fee2Label,
+      bufferPct: plan.bufferPct,
+      variantName: plan.variantName,
+      notes: plan.notes,
+      rows: (plan.rows ?? []).map((r) => ({
+        platform: r.platform,
+        objective: r.objective,
+        audienceType: r.audienceType,
+        audienceName: r.audienceName,
+        budget: r.budget,
+        projectedKpis: r.projectedKpis,
+        creative: r.creative,
+        country: r.country,
+        buyType: r.buyType,
+        sortOrder: r.sortOrder,
+      })),
+    };
+
+    return this.versionRepo.save(
+      this.versionRepo.create({
+        planId,
+        versionNumber,
+        snapshot,
+        changeType,
+        changeSummary,
+        createdBy: userId ?? null,
+      }),
+    );
+  }
+
+  async getVersions(planId: string): Promise<PlanVersion[]> {
+    return this.versionRepo.find({
+      where: { planId },
+      order: { versionNumber: 'DESC' },
+    });
+  }
+
+  async getVersion(planId: string, versionId: string): Promise<PlanVersion> {
+    const v = await this.versionRepo.findOne({
+      where: { id: versionId, planId },
+    });
+    if (!v) throw new NotFoundException('Version not found');
+    return v;
+  }
+
+  async restoreVersion(
+    planId: string,
+    versionId: string,
+    userId: string,
+  ): Promise<MediaPlan> {
+    const version = await this.getVersion(planId, versionId);
+    const snapshot = version.snapshot as Record<string, any>;
+
+    // Delete existing rows
+    await this.rowRepo.delete({ planId });
+
+    // Restore rows from snapshot
+    const rows = snapshot.rows ?? [];
+    if (rows.length) {
+      const entities = rows.map((r: Record<string, any>, idx: number) =>
+        this.rowRepo.create({
+          planId,
+          platform: r.platform,
+          objective: r.objective ?? null,
+          audienceType: r.audienceType ?? null,
+          audienceName: r.audienceName ?? null,
+          budget: r.budget ?? null,
+          projectedKpis: r.projectedKpis ?? {},
+          creative: r.creative ?? null,
+          country: r.country ?? null,
+          buyType: r.buyType ?? null,
+          sortOrder: r.sortOrder ?? idx,
+        }),
+      );
+      await this.rowRepo.save(entities);
+    }
+
+    await this.createVersion(
+      planId,
+      'restored',
+      `Restored to version ${version.versionNumber}`,
+      userId,
+    );
+
+    this.auditService.log(
+      'plan.version_restored',
+      'media_plan',
+      planId,
+      userId,
+      { restoredFromVersion: version.versionNumber },
+    );
+
+    return this.findOne(planId);
+  }
+
+  async diffVersions(
+    planId: string,
+    v1Id: string,
+    v2Id: string,
+  ): Promise<Record<string, unknown>> {
+    const [v1, v2] = await Promise.all([
+      this.getVersion(planId, v1Id),
+      this.getVersion(planId, v2Id),
+    ]);
+    const s1 = v1.snapshot as Record<string, any>;
+    const s2 = v2.snapshot as Record<string, any>;
+
+    const fieldChanges: Array<{
+      field: string;
+      from: unknown;
+      to: unknown;
+    }> = [];
+
+    for (const key of [
+      'campaignName',
+      'totalBudget',
+      'currency',
+      'status',
+      'fee1Pct',
+      'fee2Pct',
+      'bufferPct',
+      'notes',
+    ]) {
+      if (JSON.stringify(s1[key]) !== JSON.stringify(s2[key])) {
+        fieldChanges.push({ field: key, from: s1[key], to: s2[key] });
+      }
+    }
+
+    const rows1 = (s1.rows ?? []) as Array<Record<string, unknown>>;
+    const rows2 = (s2.rows ?? []) as Array<Record<string, unknown>>;
+
+    return {
+      version1: v1.versionNumber,
+      version2: v2.versionNumber,
+      fieldChanges,
+      rowsInV1: rows1.length,
+      rowsInV2: rows2.length,
+      rowsDiff: rows2.length - rows1.length,
+    };
+  }
+
+  // ── CRUD ────────────────────────────────────────────────────────
 
   async findAll(
     opts: {
@@ -41,10 +225,6 @@ export class MediaPlansService {
   }> {
     const page = Math.max(1, opts.page ?? 1);
     const limit = Math.min(100, Math.max(1, opts.limit ?? 20));
-
-    const where: any = {};
-    if (opts.status) where.status = opts.status;
-    if (opts.clientId) where.clientId = opts.clientId;
 
     const qb = this.planRepo
       .createQueryBuilder('plan')
@@ -68,13 +248,7 @@ export class MediaPlansService {
     }
 
     const [data, total] = await qb.getManyAndCount();
-    return {
-      data,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    };
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async findOne(id: string): Promise<MediaPlan> {
@@ -86,7 +260,11 @@ export class MediaPlansService {
     return plan;
   }
 
-  async create(dto: CreatePlanDto): Promise<MediaPlan> {
+  async create(
+    dto: CreatePlanDto,
+    userId?: string,
+    userEmail?: string,
+  ): Promise<MediaPlan> {
     const plan = this.planRepo.create({
       clientId: dto.clientId ?? null,
       productId: dto.productId ?? null,
@@ -110,7 +288,6 @@ export class MediaPlansService {
     });
     const saved = await this.planRepo.save(plan);
 
-    // Auto-generate reference number if not provided
     if (!saved.referenceNumber) {
       const year = new Date().getFullYear();
       const count = await this.planRepo.count({
@@ -121,7 +298,6 @@ export class MediaPlansService {
       });
     }
 
-    // If no variantGroupId provided, use own id as group
     if (!dto.variantGroupId) {
       await this.planRepo.update(saved.id, { variantGroupId: saved.id });
     }
@@ -130,10 +306,30 @@ export class MediaPlansService {
       await this.upsertRows(saved.id, dto.rows);
     }
 
-    return this.findOne(saved.id);
+    const result = await this.findOne(saved.id);
+
+    // Hooks
+    this.createVersion(saved.id, 'created', 'Plan created', userId).catch(
+      () => {},
+    );
+    this.auditService.log(
+      'plan.created',
+      'media_plan',
+      saved.id,
+      userId ?? null,
+      { campaignName: dto.campaignName },
+      undefined,
+      userEmail,
+    );
+
+    return result;
   }
 
-  async update(id: string, dto: CreatePlanDto): Promise<MediaPlan> {
+  async update(
+    id: string,
+    dto: CreatePlanDto,
+    userId?: string,
+  ): Promise<MediaPlan> {
     const plan = await this.findOne(id);
     const updated = this.planRepo.merge(plan, {
       clientId: dto.clientId,
@@ -156,7 +352,6 @@ export class MediaPlansService {
       notes: dto.notes,
     });
 
-    // Only update variantGroupId if explicitly provided
     if (dto.variantGroupId !== undefined) {
       updated.variantGroupId = dto.variantGroupId;
     }
@@ -168,21 +363,32 @@ export class MediaPlansService {
       await this.upsertRows(id, dto.rows ?? []);
     }
 
-    return this.findOne(id);
+    const result = await this.findOne(id);
+
+    this.auditService.log('plan.updated', 'media_plan', id, userId ?? null, {
+      campaignName: dto.campaignName,
+    });
+
+    return result;
   }
 
-  async delete(id: string): Promise<void> {
-    await this.findOne(id);
+  async delete(id: string, userId?: string): Promise<void> {
+    const plan = await this.findOne(id);
     await this.planRepo.delete(id);
+    this.auditService.log('plan.deleted', 'media_plan', id, userId ?? null, {
+      campaignName: plan.campaignName,
+    });
   }
 
   async updateStatus(
     id: string,
     newStatus: string,
     userRole: string,
+    userId?: string,
+    userEmail?: string,
   ): Promise<MediaPlan> {
     const plan = await this.findOne(id);
-    const current = plan.status;
+    const oldStatus = plan.status;
 
     const validTransitions: Record<string, string[]> = {
       draft: ['pending_review'],
@@ -191,9 +397,9 @@ export class MediaPlansService {
       sent: [],
     };
 
-    if (!validTransitions[current]?.includes(newStatus)) {
+    if (!validTransitions[oldStatus]?.includes(newStatus)) {
       throw new BadRequestException(
-        `Invalid status transition: ${current} → ${newStatus}`,
+        `Invalid status transition: ${oldStatus} → ${newStatus}`,
       );
     }
 
@@ -210,10 +416,43 @@ export class MediaPlansService {
     }
 
     await this.planRepo.update(id, { status: newStatus });
+
+    // Version + audit hooks
+    this.createVersion(
+      id,
+      'status_changed',
+      `Status changed from ${oldStatus} to ${newStatus}`,
+      userId,
+    ).catch(() => {});
+    this.auditService.log(
+      'plan.status_changed',
+      'media_plan',
+      id,
+      userId ?? null,
+      {
+        oldStatus,
+        newStatus,
+        campaignName: plan.campaignName,
+      },
+      undefined,
+      userEmail,
+    );
+
+    // Email notification
+    if (userEmail) {
+      this.notifications.sendStatusChanged({
+        recipientEmail: userEmail,
+        campaignName: plan.campaignName ?? 'Untitled Plan',
+        oldStatus,
+        newStatus,
+        changedBy: userEmail,
+      });
+    }
+
     return this.findOne(id);
   }
 
-  async duplicate(planId: string): Promise<MediaPlan> {
+  async duplicate(planId: string, userId?: string): Promise<MediaPlan> {
     const original = await this.findOne(planId);
     const rows = await this.rowRepo.find({
       where: { planId },
@@ -279,12 +518,28 @@ export class MediaPlansService {
       await this.rowRepo.save(clonedRows);
     }
 
+    // Hooks
+    this.createVersion(
+      savedPlan.id,
+      'duplicated',
+      `Duplicated from ${original.referenceNumber ?? original.id}`,
+      userId,
+    ).catch(() => {});
+    this.auditService.log(
+      'plan.duplicated',
+      'media_plan',
+      savedPlan.id,
+      userId ?? null,
+      { sourceId: planId, sourceName: original.campaignName },
+    );
+
     return this.findOne(savedPlan.id);
   }
 
   async bulkUpsertRows(
     planId: string,
     rows: Array<Record<string, any>>,
+    userId?: string,
   ): Promise<MediaPlan> {
     const plan = await this.planRepo.findOne({ where: { id: planId } });
     if (!plan) throw new NotFoundException(`Plan ${planId} not found`);
@@ -296,7 +551,6 @@ export class MediaPlansService {
     const toCreate = rows.filter((r) => !r.id);
     const toUpdate = rows.filter((r) => r.id);
 
-    // Update existing rows
     if (toUpdate.length) {
       await Promise.all(
         toUpdate.map((r) => {
@@ -306,10 +560,18 @@ export class MediaPlansService {
       );
     }
 
-    // Create new rows (with KPI calculation)
     if (toCreate.length) {
       await this.upsertRows(planId, toCreate as any);
     }
+
+    // Version hook
+    const total = toCreate.length + toUpdate.length;
+    this.createVersion(
+      planId,
+      'rows_updated',
+      `Updated ${total} row${total !== 1 ? 's' : ''}`,
+      userId,
+    ).catch(() => {});
 
     return this.findOne(planId);
   }
@@ -317,13 +579,47 @@ export class MediaPlansService {
   async bulkDeleteRows(planId: string, rowIds: string[]): Promise<MediaPlan> {
     const plan = await this.planRepo.findOne({ where: { id: planId } });
     if (!plan) throw new NotFoundException(`Plan ${planId} not found`);
-
     await Promise.all(rowIds.map((id) => this.rowRepo.delete({ id, planId })));
-
     return this.findOne(planId);
   }
 
-  /** Normalise display-name → DB slug for platform lookup */
+  /** Record a version on export (called from ExportController) */
+  async recordExport(
+    planId: string,
+    format: string,
+    userId?: string,
+  ): Promise<void> {
+    this.createVersion(
+      planId,
+      'exported',
+      `Exported as ${format.toUpperCase()}`,
+      userId,
+    ).catch(() => {});
+    this.auditService.log(
+      'plan.exported',
+      'media_plan',
+      planId,
+      userId ?? null,
+      { format },
+    );
+  }
+
+  /** Record a version on share (called from controller) */
+  async recordShare(planId: string, userId?: string): Promise<void> {
+    this.createVersion(planId, 'shared', 'Shared with client', userId).catch(
+      () => {},
+    );
+    this.auditService.log(
+      'plan.shared',
+      'media_plan',
+      planId,
+      userId ?? null,
+      {},
+    );
+  }
+
+  // ── Private helpers ─────────────────────────────────────────────
+
   private normalizePlatform(input: string): string {
     const map: Record<string, string> = {
       'meta + ig': 'meta_ig',
@@ -356,12 +652,15 @@ export class MediaPlansService {
   ): Promise<void> {
     if (!rows?.length) return;
 
+    // Fetch plan's buffer percentage for high-estimate reduction
+    const plan = await this.planRepo.findOne({ where: { id: planId } });
+    const bufferPct = Number(plan?.bufferPct ?? 12);
+
     const rowEntities = await Promise.all(
       rows.map(async (r, idx) => {
         let projectedKpis = r.projectedKpis ?? {};
         let resolvedBenchmarkId = r.benchmarkId ?? null;
 
-        // Auto-resolve benchmark if not provided but platform+objective+audienceType are
         if (
           !resolvedBenchmarkId &&
           r.platform &&
@@ -392,6 +691,21 @@ export class MediaPlansService {
               benchmark,
               r.budget,
             );
+            // Apply buffer to high estimates
+            if (bufferPct > 0) {
+              const factor = 1 - bufferPct / 100;
+              const buffered = kpis as unknown as Record<string, unknown>;
+              for (const val of Object.values(buffered)) {
+                if (
+                  val &&
+                  typeof val === 'object' &&
+                  'high' in (val as Record<string, unknown>) &&
+                  typeof (val as Record<string, number>).high === 'number'
+                ) {
+                  (val as Record<string, number>).high *= factor;
+                }
+              }
+            }
             projectedKpis = kpis as unknown as Record<string, unknown>;
           }
         }

@@ -19,23 +19,38 @@ export class AnalyticsController {
   }
 
   @Get('seasonal')
-  getSeasonalAlerts(
+  async getSeasonalAlerts(
     @Query('platform') platform?: string,
     @Query('objective') objective?: string,
     @Query('month') month?: string,
   ) {
-    return this.analyticsService.getSeasonalAlerts(
+    const data = await this.analyticsService.getSeasonalAlerts(
       platform,
       objective,
       month ? Number(month) : undefined,
     );
+    return {
+      data,
+      message: data.length === 0
+        ? 'Requires plan-linked actuals with period dates for seasonal analysis. Import actuals with period_start dates to enable this feature.'
+        : undefined,
+    };
   }
 
   @Get('trend')
-  getMonthlyTrend(
+  async getMonthlyTrend(
     @Query('platform') platform: string,
     @Query('objective') objective: string,
   ) {
-    return this.analyticsService.getMonthlyTrend(platform, objective);
+    const data = await this.analyticsService.getMonthlyTrend(
+      platform,
+      objective,
+    );
+    return {
+      data,
+      message: data.length === 0
+        ? 'Requires plan-linked actuals with CPM data for trend analysis. At least 3 months of data needed.'
+        : undefined,
+    };
   }
 }

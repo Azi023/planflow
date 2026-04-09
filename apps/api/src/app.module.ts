@@ -15,6 +15,8 @@ import { User } from './entities/user.entity';
 import { CampaignActual } from './entities/campaign-actual.entity';
 import { PlanTemplate } from './entities/plan-template.entity';
 import { PlanComment } from './entities/plan-comment.entity';
+import { PlanVersion } from './entities/plan-version.entity';
+import { AuditLog } from './entities/audit-log.entity';
 import { BenchmarksModule } from './benchmarks/benchmarks.module';
 import { ClientsModule } from './clients/clients.module';
 import { MediaPlansModule } from './media-plans/media-plans.module';
@@ -28,6 +30,8 @@ import { TemplatesModule } from './templates/templates.module';
 import { SharingModule } from './sharing/sharing.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { AiModule } from './ai/ai.module';
+import { AuditModule } from './audit/audit.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { RolesGuard } from './auth/roles.guard';
 
@@ -57,6 +61,8 @@ import { RolesGuard } from './auth/roles.guard';
           CampaignActual,
           PlanTemplate,
           PlanComment,
+          PlanVersion,
+          AuditLog,
         ],
         synchronize: true,
       }),
@@ -74,6 +80,8 @@ import { RolesGuard } from './auth/roles.guard';
     SharingModule,
     AnalyticsModule,
     AiModule,
+    AuditModule,
+    NotificationsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
