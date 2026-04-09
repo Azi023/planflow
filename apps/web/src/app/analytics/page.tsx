@@ -62,7 +62,7 @@ function DetailPanel({
 
   useEffect(() => {
     fetchAccuracyDetail(cell.platform, cell.objective).then(setDetail).catch(() => null);
-    fetchMonthlyTrend(cell.platform, cell.objective).then(setTrend).catch(() => null);
+    fetchMonthlyTrend(cell.platform, cell.objective).then(r => setTrend(r.data)).catch(() => null);
   }, [cell.platform, cell.objective]);
 
   const fmtNum = (n: number | null | undefined, decimals = 2) =>

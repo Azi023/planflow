@@ -1,10 +1,12 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import MediaPlanBuilder from '@/components/media-plan-builder/MediaPlanBuilder';
 import TestCalculator from '@/components/test-calculator/TestCalculator';
 import { ActualsPanel } from '@/components/actuals/ActualsPanel';
 import { PageHeader } from '@/components/PageHeader';
+import { VersionHistoryDrawer } from '@/components/version-history/VersionHistoryDrawer';
 import { fetchPlanGroup } from '@/lib/api';
 import type { MediaPlan } from '@/lib/types';
 
@@ -21,9 +23,11 @@ interface Props {
 
 export default function EditPlanPage({ params }: Props) {
   const { id } = use(params);
+  const router = useRouter();
   const [view, setView] = useState<View>('builder');
   const [planName, setPlanName] = useState<string | null>(null);
   const [isHistorical, setIsHistorical] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
     fetchPlanGroup(id).then((plans: MediaPlan[]) => {
@@ -53,25 +57,39 @@ export default function EditPlanPage({ params }: Props) {
           { label: breadcrumbLabel },
         ]}
         action={
-          <div className="flex rounded-lg overflow-hidden border border-[#DBDFE9]">
-            {TABS.map((tab) => (
-              <button
-                key={tab.value}
-                onClick={() => setView(tab.value)}
-                disabled={isHistorical && tab.value === 'builder'}
-                title={isHistorical && tab.value === 'builder' ? 'This is a historical data container' : undefined}
-                className={`px-4 py-2 text-[13px] font-medium transition-all flex items-center gap-2 ${
-                  view === tab.value
-                    ? 'bg-[#1B84FF] text-white'
-                    : 'bg-white text-[#4B5675] hover:bg-[#F6F6F9]'
-                } disabled:opacity-40 disabled:cursor-not-allowed`}
-              >
-                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <path d={tab.icon} />
-                </svg>
-                {tab.label}
-              </button>
-            ))}
+          <div className="flex items-center gap-2">
+            {/* History button */}
+            <button
+              onClick={() => setShowHistory(true)}
+              className="w-9 h-9 rounded-lg flex items-center justify-center border border-[#DBDFE9] text-[#4B5675] hover:bg-[#F6F6F9] transition-colors"
+              title="Version History"
+            >
+              <svg viewBox="0 0 24 24" className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+              </svg>
+            </button>
+
+            {/* View tabs */}
+            <div className="flex rounded-lg overflow-hidden border border-[#DBDFE9]">
+              {TABS.map((tab) => (
+                <button
+                  key={tab.value}
+                  onClick={() => setView(tab.value)}
+                  disabled={isHistorical && tab.value === 'builder'}
+                  title={isHistorical && tab.value === 'builder' ? 'This is a historical data container' : undefined}
+                  className={`px-4 py-2 text-[13px] font-medium transition-all flex items-center gap-2 ${
+                    view === tab.value
+                      ? 'bg-[#1B84FF] text-white'
+                      : 'bg-white text-[#4B5675] hover:bg-[#F6F6F9]'
+                  } disabled:opacity-40 disabled:cursor-not-allowed`}
+                >
+                  <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d={tab.icon} />
+                  </svg>
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
         }
       />
@@ -100,6 +118,15 @@ export default function EditPlanPage({ params }: Props) {
 
         {view === 'actuals' && <ActualsPanel groupId={id} />}
       </div>
+
+      {/* Version History Drawer */}
+      {showHistory && (
+        <VersionHistoryDrawer
+          planId={id}
+          onClose={() => setShowHistory(false)}
+          onRestored={() => router.refresh()}
+        />
+      )}
     </>
   );
 }

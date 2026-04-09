@@ -909,7 +909,7 @@ export default function MediaPlanBuilder(props: MediaPlanBuilderProps = {}) {
       .catch(() => {});
     const currentMonth = new Date().getMonth() + 1;
     fetchSeasonalAlerts({ month: currentMonth })
-      .then(setSeasonalAlerts)
+      .then(r => setSeasonalAlerts(r.data))
       .catch(() => {});
     // Auto-populate preparedBy from logged-in user for new plans
     if (!props.groupId) {

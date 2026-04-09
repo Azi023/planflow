@@ -433,7 +433,7 @@ export function fetchSeasonalAlerts(params?: {
   platform?: string;
   objective?: string;
   month?: number;
-}): Promise<SeasonalAlert[]> {
+}): Promise<{ data: SeasonalAlert[]; message?: string }> {
   const qs = params
     ? '?' + new URLSearchParams(
         Object.fromEntries(
@@ -443,11 +443,11 @@ export function fetchSeasonalAlerts(params?: {
         ),
       ).toString()
     : '';
-  return request<SeasonalAlert[]>(`/analytics/seasonal${qs}`);
+  return request<{ data: SeasonalAlert[]; message?: string }>(`/analytics/seasonal${qs}`);
 }
 
-export function fetchMonthlyTrend(platform: string, objective: string): Promise<MonthlyTrendEntry[]> {
-  return request<MonthlyTrendEntry[]>(`/analytics/trend?platform=${encodeURIComponent(platform)}&objective=${encodeURIComponent(objective)}`);
+export function fetchMonthlyTrend(platform: string, objective: string): Promise<{ data: MonthlyTrendEntry[]; message?: string }> {
+  return request<{ data: MonthlyTrendEntry[]; message?: string }>(`/analytics/trend?platform=${encodeURIComponent(platform)}&objective=${encodeURIComponent(objective)}`);
 }
 
 // ─── Benchmark Intelligence (Sprint 3A) ──────────────────────────────────────
@@ -551,4 +551,72 @@ export async function findSimilarCampaigns(payload: {
     { method: 'POST', body: JSON.stringify(payload) },
   );
   return res.data;
+}
+
+// ── Version control ───────────────────────────────────────────────────────
+
+export interface PlanVersion {
+  id: string;
+  planId: string;
+  versionNumber: number;
+  snapshot: Record<string, unknown>;
+  changeType: string;
+  changeSummary: string | null;
+  createdBy: string | null;
+  createdAt: string;
+}
+
+export function fetchPlanVersions(planId: string): Promise<PlanVersion[]> {
+  return request<PlanVersion[]>(`/media-plans/${planId}/versions`);
+}
+
+export function fetchPlanVersion(planId: string, versionId: string): Promise<PlanVersion> {
+  return request<PlanVersion>(`/media-plans/${planId}/versions/${versionId}`);
+}
+
+export function restorePlanVersion(planId: string, versionId: string): Promise<unknown> {
+  return request(`/media-plans/${planId}/versions/${versionId}/restore`, { method: 'POST' });
+}
+
+export function diffPlanVersions(planId: string, v1: string, v2: string): Promise<Record<string, unknown>> {
+  return request(`/media-plans/${planId}/versions/diff?v1=${v1}&v2=${v2}`);
+}
+
+// ── Audit logs ────────────────────────────────────────────────────────────
+
+export interface AuditLogEntry {
+  id: string;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  userId: string | null;
+  userEmail: string | null;
+  metadata: Record<string, unknown>;
+  ipAddress: string | null;
+  createdAt: string;
+}
+
+export function fetchAuditLogs(opts?: {
+  page?: number;
+  limit?: number;
+  entityType?: string;
+  action?: string;
+  userId?: string;
+  from?: string;
+  to?: string;
+}): Promise<{ data: AuditLogEntry[]; total: number; page: number; limit: number; totalPages: number }> {
+  const params = new URLSearchParams();
+  if (opts?.page) params.set('page', String(opts.page));
+  if (opts?.limit) params.set('limit', String(opts.limit));
+  if (opts?.entityType) params.set('entityType', opts.entityType);
+  if (opts?.action) params.set('action', opts.action);
+  if (opts?.userId) params.set('userId', opts.userId);
+  if (opts?.from) params.set('from', opts.from);
+  if (opts?.to) params.set('to', opts.to);
+  const qs = params.toString();
+  return request(`/audit${qs ? '?' + qs : ''}`);
+}
+
+export function fetchEntityAuditLogs(entityType: string, entityId: string): Promise<AuditLogEntry[]> {
+  return request<AuditLogEntry[]>(`/audit/entity/${entityType}/${entityId}`);
 }

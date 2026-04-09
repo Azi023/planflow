@@ -46,6 +46,7 @@ const ICONS = {
   analytics: 'M18 20V10M12 20V4M6 20v-6M2 20h20',
   actuals: 'M22 12h-4l-3 9L9 3l-3 9H2',
   settings: 'M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z',
+  audit: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2M12 12h3M12 16h3M9 12h.01M9 16h.01',
   collapse: 'M11 19l-7-7 7-7M18 19l-7-7 7-7',
   expand: 'M13 5l7 7-7 7M6 5l7 7-7 7',
   signout: 'M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9',
@@ -159,6 +160,35 @@ export function Sidebar() {
             </div>
           </div>
         ))}
+
+        {/* Admin section — only visible to admins */}
+        {user?.role === 'admin' && (
+          <div className="mb-4">
+            {!collapsed && (
+              <p className="text-[10px] font-semibold text-[#78829D] uppercase tracking-wider px-4 pb-2 mt-2 mb-1">
+                ADMIN
+              </p>
+            )}
+            {collapsed && <div className="h-px bg-white/10 mx-2 mb-2" />}
+            <div className="space-y-0.5">
+              <Link
+                href="/admin/audit"
+                title={collapsed ? 'Audit Log' : undefined}
+                className={`relative flex items-center gap-3 rounded-lg text-[13px] font-medium transition-all duration-150 ${
+                  collapsed ? 'justify-center px-0 py-2.5' : 'px-3 py-2.5'
+                } ${
+                  pathname.startsWith('/admin')
+                    ? 'bg-[#1B84FF]/15 text-white'
+                    : 'text-[#99A1B7] hover:text-white hover:bg-white/5'
+                }`}
+              >
+                {pathname.startsWith('/admin') && <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r bg-[#1B84FF]" />}
+                <Icon d={ICONS.audit} />
+                {!collapsed && <span className="flex-1 truncate">Audit Log</span>}
+              </Link>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Bottom: collapse toggle + user */}
