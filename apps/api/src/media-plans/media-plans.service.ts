@@ -24,13 +24,21 @@ export class MediaPlansService {
     private readonly benchmarksService: BenchmarksService,
   ) {}
 
-  async findAll(opts: {
-    page?: number;
-    limit?: number;
-    status?: string;
-    clientId?: string;
-    search?: string;
-  } = {}): Promise<{ data: MediaPlan[]; total: number; page: number; limit: number; totalPages: number }> {
+  async findAll(
+    opts: {
+      page?: number;
+      limit?: number;
+      status?: string;
+      clientId?: string;
+      search?: string;
+    } = {},
+  ): Promise<{
+    data: MediaPlan[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
     const page = Math.max(1, opts.page ?? 1);
     const limit = Math.min(100, Math.max(1, opts.limit ?? 20));
 
@@ -315,6 +323,25 @@ export class MediaPlansService {
     return this.findOne(planId);
   }
 
+  /** Normalise display-name → DB slug for platform lookup */
+  private normalizePlatform(input: string): string {
+    const map: Record<string, string> = {
+      'meta + ig': 'meta_ig',
+      'meta + instagram': 'meta_ig',
+      'meta+ig': 'meta_ig',
+      'meta only': 'meta',
+      'ig only': 'ig',
+      'ig follower': 'ig_follower',
+      'meta page like': 'meta_page_like',
+      'youtube video views': 'youtube_video',
+      'youtube bumper': 'youtube_bumper',
+      'demand gen': 'demand_gen',
+      'performance max': 'perf_max',
+    };
+    const lower = input.trim().toLowerCase();
+    return map[lower] ?? lower;
+  }
+
   findByGroup(groupId: string): Promise<MediaPlan[]> {
     return this.planRepo.find({
       where: { variantGroupId: groupId },
@@ -332,10 +359,33 @@ export class MediaPlansService {
     const rowEntities = await Promise.all(
       rows.map(async (r, idx) => {
         let projectedKpis = r.projectedKpis ?? {};
+        let resolvedBenchmarkId = r.benchmarkId ?? null;
 
-        if (r.benchmarkId && r.budget) {
+        // Auto-resolve benchmark if not provided but platform+objective+audienceType are
+        if (
+          !resolvedBenchmarkId &&
+          r.platform &&
+          r.objective &&
+          r.audienceType
+        ) {
+          const normPlatform = this.normalizePlatform(r.platform);
+          const normObjective = r.objective.trim().toLowerCase();
+          const normAudience = r.audienceType.trim().toLowerCase();
+          const matched = await this.benchmarkRepo.findOne({
+            where: {
+              platform: normPlatform,
+              objective: normObjective,
+              audienceType: normAudience,
+            },
+          });
+          if (matched) {
+            resolvedBenchmarkId = matched.id;
+          }
+        }
+
+        if (resolvedBenchmarkId && r.budget) {
           const benchmark = await this.benchmarkRepo.findOne({
-            where: { id: r.benchmarkId },
+            where: { id: resolvedBenchmarkId },
           });
           if (benchmark) {
             const kpis = this.benchmarksService.computeKpis(
@@ -357,7 +407,7 @@ export class MediaPlansService {
           targetingCriteria: r.targetingCriteria ?? null,
           creative: r.creative ?? null,
           budget: r.budget ?? null,
-          benchmarkId: r.benchmarkId ?? null,
+          benchmarkId: resolvedBenchmarkId,
           projectedKpis,
           sortOrder: r.sortOrder ?? idx,
           country: r.country ?? null,

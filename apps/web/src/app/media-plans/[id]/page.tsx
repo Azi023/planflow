@@ -1,10 +1,11 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import MediaPlanBuilder from '@/components/media-plan-builder/MediaPlanBuilder';
 import TestCalculator from '@/components/test-calculator/TestCalculator';
 import { ActualsPanel } from '@/components/actuals/ActualsPanel';
 import { PageHeader } from '@/components/PageHeader';
+import { fetchPlanGroup } from '@/lib/api';
 
 type View = 'builder' | 'actuals';
 
@@ -20,6 +21,15 @@ interface Props {
 export default function EditPlanPage({ params }: Props) {
   const { id } = use(params);
   const [view, setView] = useState<View>('builder');
+
+  useEffect(() => {
+    fetchPlanGroup(id).then((plans) => {
+      const plan = plans[0];
+      if (plan && (!plan.rows || plan.rows.length === 0) && plan.campaignName?.includes('Meta Historical Actuals')) {
+        setView('actuals');
+      }
+    }).catch(() => {});
+  }, [id]);
 
   return (
     <>

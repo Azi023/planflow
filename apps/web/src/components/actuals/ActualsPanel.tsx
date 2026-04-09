@@ -61,6 +61,7 @@ export function ActualsPanel({ groupId }: Props) {
 
   const activePlan = plans.find((p) => p.id === activePlanId);
   const planRows = activePlan?.rows ?? [];
+  const isHistorical = planRows.length === 0 && actuals.length > 0;
 
   return (
     <div className="space-y-6">
@@ -86,58 +87,71 @@ export function ActualsPanel({ groupId }: Props) {
         </div>
       )}
 
-      {/* Input card */}
-      <div className="bg-white rounded-[8px] border border-[#E1E3EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-        <div className="px-6 pt-5 pb-4 border-b border-[#E1E3EA] flex items-center justify-between">
-          <div>
-            <p className="text-sm font-semibold text-[#071437]">Enter Actuals</p>
-            <p className="text-xs text-[#99A1B7] mt-0.5">
-              Record real campaign performance data
-            </p>
-          </div>
-          {/* Mode toggle */}
-          <div className="flex rounded-md border border-[#E1E3EA] overflow-hidden text-xs font-medium">
-            <button
-              onClick={() => setInputMode('quick')}
-              className={`px-3 py-1.5 transition-colors ${
-                inputMode === 'quick'
-                  ? 'bg-[#1B84FF] text-white'
-                  : 'bg-white text-[#4B5675] hover:bg-[#F1F1F4]'
-              }`}
-            >
-              Quick Form
-            </button>
-            <button
-              onClick={() => setInputMode('bulk')}
-              className={`px-3 py-1.5 border-l border-[#E1E3EA] transition-colors ${
-                inputMode === 'bulk'
-                  ? 'bg-[#1B84FF] text-white'
-                  : 'bg-white text-[#4B5675] hover:bg-[#F1F1F4]'
-              }`}
-            >
-              Bulk Paste
-            </button>
-          </div>
+      {/* Historical data banner — shown for imported actuals without plan rows */}
+      {isHistorical && (
+        <div className="bg-[#F1F5FF] border border-[#1B84FF]/20 rounded-lg px-5 py-4">
+          <p className="text-sm font-medium text-[#071437]">Historical Data Container</p>
+          <p className="text-xs text-[#4B5675] mt-1">
+            This plan contains {actuals.length} imported campaign actuals from Meta Ads Manager.
+            Performance data is shown below.
+          </p>
         </div>
+      )}
 
-        <div className="p-6">
-          {activePlanId && inputMode === 'quick' && (
-            <ActualsQuickForm
-              planId={activePlanId}
-              planRows={planRows}
-              currency={activePlan?.currency ?? 'LKR'}
-              onSaved={refreshActuals}
-            />
-          )}
-          {activePlanId && inputMode === 'bulk' && (
-            <ActualsBulkPaste
-              planId={activePlanId}
-              planRows={planRows}
-              onSaved={refreshActuals}
-            />
-          )}
+      {/* Input card — hidden for historical data containers (no rows to link actuals to) */}
+      {!isHistorical && (
+        <div className="bg-white rounded-[8px] border border-[#E1E3EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+          <div className="px-6 pt-5 pb-4 border-b border-[#E1E3EA] flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-[#071437]">Enter Actuals</p>
+              <p className="text-xs text-[#99A1B7] mt-0.5">
+                Record real campaign performance data
+              </p>
+            </div>
+            {/* Mode toggle */}
+            <div className="flex rounded-md border border-[#E1E3EA] overflow-hidden text-xs font-medium">
+              <button
+                onClick={() => setInputMode('quick')}
+                className={`px-3 py-1.5 transition-colors ${
+                  inputMode === 'quick'
+                    ? 'bg-[#1B84FF] text-white'
+                    : 'bg-white text-[#4B5675] hover:bg-[#F1F1F4]'
+                }`}
+              >
+                Quick Form
+              </button>
+              <button
+                onClick={() => setInputMode('bulk')}
+                className={`px-3 py-1.5 border-l border-[#E1E3EA] transition-colors ${
+                  inputMode === 'bulk'
+                    ? 'bg-[#1B84FF] text-white'
+                    : 'bg-white text-[#4B5675] hover:bg-[#F1F1F4]'
+                }`}
+              >
+                Bulk Paste
+              </button>
+            </div>
+          </div>
+
+          <div className="p-6">
+            {activePlanId && inputMode === 'quick' && (
+              <ActualsQuickForm
+                planId={activePlanId}
+                planRows={planRows}
+                currency={activePlan?.currency ?? 'LKR'}
+                onSaved={refreshActuals}
+              />
+            )}
+            {activePlanId && inputMode === 'bulk' && (
+              <ActualsBulkPaste
+                planId={activePlanId}
+                planRows={planRows}
+                onSaved={refreshActuals}
+              />
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Comparison */}
       {activePlanId && (

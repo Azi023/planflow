@@ -4,6 +4,8 @@ import { Like, Repository } from 'typeorm';
 import { PlanTemplate } from '../entities/plan-template.entity';
 import { MediaPlan } from '../entities/media-plan.entity';
 import { MediaPlanRow } from '../entities/media-plan-row.entity';
+import { Benchmark } from '../entities/benchmark.entity';
+import { BenchmarksService } from '../benchmarks/benchmarks.service';
 import { CreateTemplateDto } from './dto/create-template.dto';
 import { CreateFromTemplateDto } from './dto/create-from-template.dto';
 
@@ -16,6 +18,9 @@ export class TemplatesService {
     private readonly planRepo: Repository<MediaPlan>,
     @InjectRepository(MediaPlanRow)
     private readonly rowRepo: Repository<MediaPlanRow>,
+    @InjectRepository(Benchmark)
+    private readonly benchmarkRepo: Repository<Benchmark>,
+    private readonly benchmarksService: BenchmarksService,
   ) {}
 
   findAll(userId: string): Promise<PlanTemplate[]> {
@@ -160,26 +165,52 @@ export class TemplatesService {
       variantGroupId: savedPlan.id,
     });
 
-    const rows = template.templateRows.map((tr, idx) => {
-      const rowBudget = Math.round(
-        mediaSpend * ((tr.budgetPct as number) / 100),
-      );
-      return this.rowRepo.create({
-        planId: savedPlan.id,
-        platform: tr.platform as string,
-        objective: (tr.objective as string) ?? null,
-        audienceType: (tr.audienceType as string) ?? null,
-        audienceName: (tr.audienceName as string) ?? null,
-        audienceSize: (tr.audienceSize as string) ?? null,
-        targetingCriteria: (tr.targetingCriteria as string) ?? null,
-        creative: (tr.creative as string) ?? null,
-        country: (tr.country as string) ?? null,
-        buyType: (tr.buyType as string) ?? null,
-        budget: rowBudget,
-        sortOrder: idx,
-        projectedKpis: {},
-      });
-    });
+    const rows = await Promise.all(
+      template.templateRows.map(async (tr, idx) => {
+        const rowBudget = Math.round(
+          mediaSpend * ((tr.budgetPct as number) / 100),
+        );
+
+        // Resolve benchmark and compute KPIs
+        let benchmarkId: string | null = null;
+        let projectedKpis: Record<string, unknown> = {};
+        const platform = tr.platform as string;
+        const objective = tr.objective as string;
+        const audienceType = tr.audienceType as string;
+
+        if (platform && objective && audienceType) {
+          const matched = await this.benchmarkRepo.findOne({
+            where: { platform, objective, audienceType },
+          });
+          if (matched) {
+            benchmarkId = matched.id;
+            if (rowBudget > 0) {
+              projectedKpis = this.benchmarksService.computeKpis(
+                matched,
+                rowBudget,
+              ) as unknown as Record<string, unknown>;
+            }
+          }
+        }
+
+        return this.rowRepo.create({
+          planId: savedPlan.id,
+          platform,
+          objective: objective ?? null,
+          audienceType: audienceType ?? null,
+          audienceName: (tr.audienceName as string) ?? null,
+          audienceSize: (tr.audienceSize as string) ?? null,
+          targetingCriteria: (tr.targetingCriteria as string) ?? null,
+          creative: (tr.creative as string) ?? null,
+          country: (tr.country as string) ?? null,
+          buyType: (tr.buyType as string) ?? null,
+          budget: rowBudget,
+          benchmarkId,
+          sortOrder: idx,
+          projectedKpis,
+        });
+      }),
+    );
 
     if (rows.length) {
       await this.rowRepo.save(rows);

@@ -71,6 +71,10 @@ function VarianceCell({ actual, projected, lowerIsBetter = false }: VarianceCell
 export function ActualsComparison({ planRows, actuals, currency }: Props) {
   const [activePeriod, setActivePeriod] = useState<string>('__all__');
 
+  const hasRows = planRows.length > 0;
+  const standaloneActuals = actuals.filter((a) => !a.rowId);
+  const isStandaloneOnly = !hasRows && standaloneActuals.length > 0;
+
   const periods = useMemo(() => {
     const set = new Set<string>();
     for (const a of actuals) {
@@ -96,9 +100,11 @@ export function ActualsComparison({ planRows, actuals, currency }: Props) {
           impressions: acc.impressions + Number(a.actualImpressions ?? 0),
           reach: acc.reach + Number(a.actualReach ?? 0),
           clicks: acc.clicks + Number(a.actualClicks ?? 0),
+          engagements: acc.engagements + Number(a.actualEngagements ?? 0),
+          videoViews: acc.videoViews + Number(a.actualVideoViews ?? 0),
           spend: acc.spend + Number(a.actualSpend ?? 0),
         }),
-        { impressions: 0, reach: 0, clicks: 0, spend: 0 },
+        { impressions: 0, reach: 0, clicks: 0, engagements: 0, videoViews: 0, spend: 0 },
       ),
     [filteredActuals],
   );
@@ -153,38 +159,42 @@ export function ActualsComparison({ planRows, actuals, currency }: Props) {
     { label: `SPEND (${currency})`, actual: totals.spend, projected: projectedTotals.budget, lowerIsBetter: true },
   ] as const;
 
+  const periodFilterBar = periods.length > 1 && (
+    <div className="flex flex-wrap gap-1.5">
+      <button
+        onClick={() => setActivePeriod('__all__')}
+        className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
+          activePeriod === '__all__'
+            ? 'bg-[#1B84FF] text-white'
+            : 'bg-[#F1F1F4] text-[#4B5675] hover:bg-[#E1E3EA]'
+        }`}
+      >
+        All Periods
+      </button>
+      {periods.map((p) => (
+        <button
+          key={p}
+          onClick={() => setActivePeriod(p)}
+          className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
+            activePeriod === p
+              ? 'bg-[#1B84FF] text-white'
+              : 'bg-[#F1F1F4] text-[#4B5675] hover:bg-[#E1E3EA]'
+          }`}
+        >
+          {p}
+        </button>
+      ))}
+    </div>
+  );
+
   return (
     <div className="space-y-4">
       {/* Section header */}
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-[#071437]">Projected vs Actual</p>
-        {periods.length > 1 && (
-          <div className="flex flex-wrap gap-1.5">
-            <button
-              onClick={() => setActivePeriod('__all__')}
-              className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
-                activePeriod === '__all__'
-                  ? 'bg-[#1B84FF] text-white'
-                  : 'bg-[#F1F1F4] text-[#4B5675] hover:bg-[#E1E3EA]'
-              }`}
-            >
-              All Periods
-            </button>
-            {periods.map((p) => (
-              <button
-                key={p}
-                onClick={() => setActivePeriod(p)}
-                className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
-                  activePeriod === p
-                    ? 'bg-[#1B84FF] text-white'
-                    : 'bg-[#F1F1F4] text-[#4B5675] hover:bg-[#E1E3EA]'
-                }`}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-        )}
+        <p className="text-sm font-semibold text-[#071437]">
+          {isStandaloneOnly ? 'Campaign Performance' : 'Projected vs Actual'}
+        </p>
+        {periodFilterBar}
       </div>
 
       {/* Summary cards */}
@@ -205,14 +215,16 @@ export function ActualsComparison({ planRows, actuals, currency }: Props) {
                 {card.label}
               </p>
               <div className="space-y-1.5">
+                {!isStandaloneOnly && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-[#99A1B7]">Projected</span>
+                    <span className="text-xs tabular-nums font-medium text-[#071437]">
+                      {card.projected > 0 ? abbr(card.projected) : '—'}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-[#99A1B7]">Projected</span>
-                  <span className="text-xs tabular-nums font-medium text-[#071437]">
-                    {card.projected > 0 ? abbr(card.projected) : '—'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-[#99A1B7]">Actual</span>
+                  <span className="text-xs text-[#99A1B7]">{isStandaloneOnly ? 'Total' : 'Actual'}</span>
                   <span className="text-xs tabular-nums font-medium text-[#071437]">
                     {card.actual > 0 ? abbr(card.actual) : '—'}
                   </span>
@@ -231,104 +243,212 @@ export function ActualsComparison({ planRows, actuals, currency }: Props) {
         })}
       </div>
 
-      {/* Per-row table */}
-      <div className="bg-white rounded-[8px] border border-[#E1E3EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
-        <div className="px-6 py-4 border-b border-[#E1E3EA]">
-          <p className="text-sm font-semibold text-[#071437]">Per-Row Comparison</p>
-          <p className="text-xs text-[#99A1B7] mt-0.5">
-            Projected = conservative (low) estimate.
-            Actual = total across{' '}
-            {activePeriod === '__all__' ? 'all periods' : `"${activePeriod}"`}.
-          </p>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs border-collapse">
-            <thead>
-              <tr className="bg-[#F9F9F9]">
-                <th className="text-left px-3 py-2.5 font-medium text-[#4B5675] border border-[#E1E3EA] whitespace-nowrap">Platform</th>
-                <th className="text-left px-3 py-2.5 font-medium text-[#4B5675] border border-[#E1E3EA] whitespace-nowrap">Audience</th>
-                <th className="text-right px-3 py-2.5 font-medium text-[#99A1B7] border border-[#E1E3EA] whitespace-nowrap">Impr. (Proj)</th>
-                <th className="text-right px-3 py-2.5 font-medium text-[#4B5675] border border-[#E1E3EA] whitespace-nowrap">Impr. (Act / Var)</th>
-                <th className="text-right px-3 py-2.5 font-medium text-[#99A1B7] border border-[#E1E3EA] whitespace-nowrap">Reach (Proj)</th>
-                <th className="text-right px-3 py-2.5 font-medium text-[#4B5675] border border-[#E1E3EA] whitespace-nowrap">Reach (Act / Var)</th>
-                <th className="text-right px-3 py-2.5 font-medium text-[#99A1B7] border border-[#E1E3EA] whitespace-nowrap">Clicks (Proj)</th>
-                <th className="text-right px-3 py-2.5 font-medium text-[#4B5675] border border-[#E1E3EA] whitespace-nowrap">Clicks (Act / Var)</th>
-                <th className="text-right px-3 py-2.5 font-medium text-[#4B5675] border border-[#E1E3EA] whitespace-nowrap">Spend</th>
-              </tr>
-            </thead>
-            <tbody>
-              {planRows.map((row) => {
-                const proj = getProjected(row);
-                const rowActuals = actualsByRow.get(row.id);
-                return (
-                  <tr key={row.id} className="hover:bg-[#F9F9F9]">
-                    <td className="px-3 py-2 border border-[#E1E3EA] font-medium text-[#071437] whitespace-nowrap">
-                      {PLATFORM_LABEL[row.platform] ?? row.platform}
+      {/* Standalone actuals table — shown when plan has no rows (e.g. imported actuals) */}
+      {isStandaloneOnly && (
+        <div className="bg-white rounded-[8px] border border-[#E1E3EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
+          <div className="px-6 py-4 border-b border-[#E1E3EA]">
+            <p className="text-sm font-semibold text-[#071437]">Campaign Actuals</p>
+            <p className="text-xs text-[#99A1B7] mt-0.5">
+              {filteredActuals.length} campaigns —{' '}
+              {activePeriod === '__all__' ? 'all periods' : `"${activePeriod}"`}
+            </p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="bg-[#F9F9F9]">
+                  <th className="text-left px-3 py-2.5 font-medium text-[#4B5675] border border-[#E1E3EA] whitespace-nowrap">Campaign Name</th>
+                  <th className="text-left px-3 py-2.5 font-medium text-[#4B5675] border border-[#E1E3EA] whitespace-nowrap">Period</th>
+                  <th className="text-right px-3 py-2.5 font-medium text-[#4B5675] border border-[#E1E3EA] whitespace-nowrap">Impressions</th>
+                  <th className="text-right px-3 py-2.5 font-medium text-[#4B5675] border border-[#E1E3EA] whitespace-nowrap">Reach</th>
+                  <th className="text-right px-3 py-2.5 font-medium text-[#4B5675] border border-[#E1E3EA] whitespace-nowrap">Clicks</th>
+                  <th className="text-right px-3 py-2.5 font-medium text-[#4B5675] border border-[#E1E3EA] whitespace-nowrap">Engagements</th>
+                  <th className="text-right px-3 py-2.5 font-medium text-[#4B5675] border border-[#E1E3EA] whitespace-nowrap">Video Views</th>
+                  <th className="text-right px-3 py-2.5 font-medium text-[#4B5675] border border-[#E1E3EA] whitespace-nowrap">Spend</th>
+                  <th className="text-right px-3 py-2.5 font-medium text-[#4B5675] border border-[#E1E3EA] whitespace-nowrap">CPM</th>
+                  <th className="text-right px-3 py-2.5 font-medium text-[#4B5675] border border-[#E1E3EA] whitespace-nowrap">CPC</th>
+                  <th className="text-right px-3 py-2.5 font-medium text-[#4B5675] border border-[#E1E3EA] whitespace-nowrap">CTR %</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredActuals.map((a) => (
+                  <tr key={a.id} className="hover:bg-[#F9F9F9]">
+                    <td className="px-3 py-2 border border-[#E1E3EA] font-medium text-[#071437] max-w-[240px] truncate" title={a.periodLabel ?? ''}>
+                      {a.periodLabel ?? '—'}
                     </td>
                     <td className="px-3 py-2 border border-[#E1E3EA] text-[#4B5675] whitespace-nowrap">
-                      {row.audienceName ?? '—'}
+                      {a.periodStart && a.periodEnd
+                        ? `${a.periodStart} — ${a.periodEnd}`
+                        : a.periodStart ?? '—'}
                     </td>
-                    <td className="px-3 py-2 border border-[#E1E3EA] text-right tabular-nums text-[#99A1B7]">
-                      {proj.impressions.low != null ? abbr(proj.impressions.low) : '—'}
+                    <td className="px-3 py-2 border border-[#E1E3EA] text-right tabular-nums text-[#071437]">
+                      {a.actualImpressions != null ? abbr(a.actualImpressions) : '—'}
                     </td>
-                    <VarianceCell
-                      actual={rowActuals?.impressions ?? null}
-                      projected={proj.impressions.low}
-                    />
-                    <td className="px-3 py-2 border border-[#E1E3EA] text-right tabular-nums text-[#99A1B7]">
-                      {proj.reach.low != null ? abbr(proj.reach.low) : '—'}
+                    <td className="px-3 py-2 border border-[#E1E3EA] text-right tabular-nums text-[#071437]">
+                      {a.actualReach != null ? abbr(a.actualReach) : '—'}
                     </td>
-                    <VarianceCell
-                      actual={rowActuals?.reach ?? null}
-                      projected={proj.reach.low}
-                    />
-                    <td className="px-3 py-2 border border-[#E1E3EA] text-right tabular-nums text-[#99A1B7]">
-                      {proj.clicks.low != null ? abbr(proj.clicks.low) : '—'}
+                    <td className="px-3 py-2 border border-[#E1E3EA] text-right tabular-nums text-[#071437]">
+                      {a.actualClicks != null ? abbr(a.actualClicks) : '—'}
                     </td>
-                    <VarianceCell
-                      actual={rowActuals?.clicks ?? null}
-                      projected={proj.clicks.low}
-                    />
+                    <td className="px-3 py-2 border border-[#E1E3EA] text-right tabular-nums text-[#071437]">
+                      {a.actualEngagements != null ? abbr(a.actualEngagements) : '—'}
+                    </td>
+                    <td className="px-3 py-2 border border-[#E1E3EA] text-right tabular-nums text-[#071437]">
+                      {a.actualVideoViews != null ? abbr(a.actualVideoViews) : '—'}
+                    </td>
+                    <td className="px-3 py-2 border border-[#E1E3EA] text-right tabular-nums font-medium text-[#071437]">
+                      {a.actualSpend != null ? abbr(a.actualSpend) : '—'}
+                    </td>
                     <td className="px-3 py-2 border border-[#E1E3EA] text-right tabular-nums text-[#4B5675]">
-                      {rowActuals?.spend ? abbr(rowActuals.spend) : '—'}
+                      {a.actualCpm != null ? Number(a.actualCpm).toFixed(2) : '—'}
+                    </td>
+                    <td className="px-3 py-2 border border-[#E1E3EA] text-right tabular-nums text-[#4B5675]">
+                      {a.actualCpc != null ? Number(a.actualCpc).toFixed(2) : '—'}
+                    </td>
+                    <td className="px-3 py-2 border border-[#E1E3EA] text-right tabular-nums text-[#4B5675]">
+                      {a.actualCtr != null ? Number(a.actualCtr).toFixed(2) : '—'}
                     </td>
                   </tr>
-                );
-              })}
-              {/* Totals row */}
-              <tr className="bg-[#F1F1F4] font-semibold">
-                <td className="px-3 py-2 border border-[#E1E3EA] text-[#071437]" colSpan={2}>
-                  TOTAL
-                </td>
-                <td className="px-3 py-2 border border-[#E1E3EA] text-right tabular-nums text-[#99A1B7]">
-                  {projectedTotals.impressions > 0 ? abbr(projectedTotals.impressions) : '—'}
-                </td>
-                <VarianceCell
-                  actual={totals.impressions > 0 ? totals.impressions : null}
-                  projected={projectedTotals.impressions}
-                />
-                <td className="px-3 py-2 border border-[#E1E3EA] text-right tabular-nums text-[#99A1B7]">
-                  {projectedTotals.reach > 0 ? abbr(projectedTotals.reach) : '—'}
-                </td>
-                <VarianceCell
-                  actual={totals.reach > 0 ? totals.reach : null}
-                  projected={projectedTotals.reach}
-                />
-                <td className="px-3 py-2 border border-[#E1E3EA] text-right tabular-nums text-[#99A1B7]">
-                  {projectedTotals.clicks > 0 ? abbr(projectedTotals.clicks) : '—'}
-                </td>
-                <VarianceCell
-                  actual={totals.clicks > 0 ? totals.clicks : null}
-                  projected={projectedTotals.clicks}
-                />
-                <td className="px-3 py-2 border border-[#E1E3EA] text-right tabular-nums text-[#4B5675]">
-                  {totals.spend > 0 ? abbr(totals.spend) : '—'}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                ))}
+                {/* Totals row */}
+                <tr className="bg-[#F1F1F4] font-semibold">
+                  <td className="px-3 py-2 border border-[#E1E3EA] text-[#071437]" colSpan={2}>
+                    TOTAL ({filteredActuals.length} campaigns)
+                  </td>
+                  <td className="px-3 py-2 border border-[#E1E3EA] text-right tabular-nums text-[#071437]">
+                    {abbr(totals.impressions)}
+                  </td>
+                  <td className="px-3 py-2 border border-[#E1E3EA] text-right tabular-nums text-[#071437]">
+                    {abbr(totals.reach)}
+                  </td>
+                  <td className="px-3 py-2 border border-[#E1E3EA] text-right tabular-nums text-[#071437]">
+                    {abbr(totals.clicks)}
+                  </td>
+                  <td className="px-3 py-2 border border-[#E1E3EA] text-right tabular-nums text-[#071437]">
+                    {abbr(totals.engagements)}
+                  </td>
+                  <td className="px-3 py-2 border border-[#E1E3EA] text-right tabular-nums text-[#071437]">
+                    {abbr(totals.videoViews)}
+                  </td>
+                  <td className="px-3 py-2 border border-[#E1E3EA] text-right tabular-nums font-medium text-[#071437]">
+                    {abbr(totals.spend)}
+                  </td>
+                  <td className="px-3 py-2 border border-[#E1E3EA] text-right tabular-nums text-[#4B5675]">
+                    {totals.impressions > 0 ? (totals.spend / totals.impressions * 1000).toFixed(2) : '—'}
+                  </td>
+                  <td className="px-3 py-2 border border-[#E1E3EA] text-right tabular-nums text-[#4B5675]">
+                    {totals.clicks > 0 ? (totals.spend / totals.clicks).toFixed(2) : '—'}
+                  </td>
+                  <td className="px-3 py-2 border border-[#E1E3EA] text-right tabular-nums text-[#4B5675]">
+                    {totals.impressions > 0 ? (totals.clicks / totals.impressions * 100).toFixed(2) : '—'}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Per-row comparison table — shown when plan has rows */}
+      {hasRows && (
+        <div className="bg-white rounded-[8px] border border-[#E1E3EA] shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
+          <div className="px-6 py-4 border-b border-[#E1E3EA]">
+            <p className="text-sm font-semibold text-[#071437]">Per-Row Comparison</p>
+            <p className="text-xs text-[#99A1B7] mt-0.5">
+              Projected = conservative (low) estimate.
+              Actual = total across{' '}
+              {activePeriod === '__all__' ? 'all periods' : `"${activePeriod}"`}.
+            </p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="bg-[#F9F9F9]">
+                  <th className="text-left px-3 py-2.5 font-medium text-[#4B5675] border border-[#E1E3EA] whitespace-nowrap">Platform</th>
+                  <th className="text-left px-3 py-2.5 font-medium text-[#4B5675] border border-[#E1E3EA] whitespace-nowrap">Audience</th>
+                  <th className="text-right px-3 py-2.5 font-medium text-[#99A1B7] border border-[#E1E3EA] whitespace-nowrap">Impr. (Proj)</th>
+                  <th className="text-right px-3 py-2.5 font-medium text-[#4B5675] border border-[#E1E3EA] whitespace-nowrap">Impr. (Act / Var)</th>
+                  <th className="text-right px-3 py-2.5 font-medium text-[#99A1B7] border border-[#E1E3EA] whitespace-nowrap">Reach (Proj)</th>
+                  <th className="text-right px-3 py-2.5 font-medium text-[#4B5675] border border-[#E1E3EA] whitespace-nowrap">Reach (Act / Var)</th>
+                  <th className="text-right px-3 py-2.5 font-medium text-[#99A1B7] border border-[#E1E3EA] whitespace-nowrap">Clicks (Proj)</th>
+                  <th className="text-right px-3 py-2.5 font-medium text-[#4B5675] border border-[#E1E3EA] whitespace-nowrap">Clicks (Act / Var)</th>
+                  <th className="text-right px-3 py-2.5 font-medium text-[#4B5675] border border-[#E1E3EA] whitespace-nowrap">Spend</th>
+                </tr>
+              </thead>
+              <tbody>
+                {planRows.map((row) => {
+                  const proj = getProjected(row);
+                  const rowActuals = actualsByRow.get(row.id);
+                  return (
+                    <tr key={row.id} className="hover:bg-[#F9F9F9]">
+                      <td className="px-3 py-2 border border-[#E1E3EA] font-medium text-[#071437] whitespace-nowrap">
+                        {PLATFORM_LABEL[row.platform] ?? row.platform}
+                      </td>
+                      <td className="px-3 py-2 border border-[#E1E3EA] text-[#4B5675] whitespace-nowrap">
+                        {row.audienceName ?? '—'}
+                      </td>
+                      <td className="px-3 py-2 border border-[#E1E3EA] text-right tabular-nums text-[#99A1B7]">
+                        {proj.impressions.low != null ? abbr(proj.impressions.low) : '—'}
+                      </td>
+                      <VarianceCell
+                        actual={rowActuals?.impressions ?? null}
+                        projected={proj.impressions.low}
+                      />
+                      <td className="px-3 py-2 border border-[#E1E3EA] text-right tabular-nums text-[#99A1B7]">
+                        {proj.reach.low != null ? abbr(proj.reach.low) : '—'}
+                      </td>
+                      <VarianceCell
+                        actual={rowActuals?.reach ?? null}
+                        projected={proj.reach.low}
+                      />
+                      <td className="px-3 py-2 border border-[#E1E3EA] text-right tabular-nums text-[#99A1B7]">
+                        {proj.clicks.low != null ? abbr(proj.clicks.low) : '—'}
+                      </td>
+                      <VarianceCell
+                        actual={rowActuals?.clicks ?? null}
+                        projected={proj.clicks.low}
+                      />
+                      <td className="px-3 py-2 border border-[#E1E3EA] text-right tabular-nums text-[#4B5675]">
+                        {rowActuals?.spend ? abbr(rowActuals.spend) : '—'}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {/* Totals row */}
+                <tr className="bg-[#F1F1F4] font-semibold">
+                  <td className="px-3 py-2 border border-[#E1E3EA] text-[#071437]" colSpan={2}>
+                    TOTAL
+                  </td>
+                  <td className="px-3 py-2 border border-[#E1E3EA] text-right tabular-nums text-[#99A1B7]">
+                    {projectedTotals.impressions > 0 ? abbr(projectedTotals.impressions) : '—'}
+                  </td>
+                  <VarianceCell
+                    actual={totals.impressions > 0 ? totals.impressions : null}
+                    projected={projectedTotals.impressions}
+                  />
+                  <td className="px-3 py-2 border border-[#E1E3EA] text-right tabular-nums text-[#99A1B7]">
+                    {projectedTotals.reach > 0 ? abbr(projectedTotals.reach) : '—'}
+                  </td>
+                  <VarianceCell
+                    actual={totals.reach > 0 ? totals.reach : null}
+                    projected={projectedTotals.reach}
+                  />
+                  <td className="px-3 py-2 border border-[#E1E3EA] text-right tabular-nums text-[#99A1B7]">
+                    {projectedTotals.clicks > 0 ? abbr(projectedTotals.clicks) : '—'}
+                  </td>
+                  <VarianceCell
+                    actual={totals.clicks > 0 ? totals.clicks : null}
+                    projected={projectedTotals.clicks}
+                  />
+                  <td className="px-3 py-2 border border-[#E1E3EA] text-right tabular-nums text-[#4B5675]">
+                    {totals.spend > 0 ? abbr(totals.spend) : '—'}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
