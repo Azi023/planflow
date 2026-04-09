@@ -1,0 +1,17 @@
+"Reporting starts","Reporting ends","Campaign name","Campaign delivery",Results,"Result indicator","Cost per results","Ad set budget","Ad set budget type","Amount spent (LKR)",Impressions,Reach,Ends,Views,"Post engagements","Link clicks",Starts
+2026-01-09,2026-04-09,"Asiri Central | Leads",active,762,actions:leadgen.other,118.84131234,"Using ad set budget",0,90557.08,673373,220859,2026-04-23,676357,8051,7291,2026-01-09
+2026-01-09,2026-04-09,"Asiri Galle | Engagement",completed,152504,actions:post_engagement,0.39332404,"Using ad set budget",0,59983.49,501537,209627,2026-04-01,534840,152504,514,2026-01-12
+2026-01-09,2026-04-09,"Asiri Medical | Engagement",completed,5987,actions:post_engagement,8.35088191,"Using ad set budget",0,49996.73,315458,141958,2026-03-10,317277,5987,1943,2026-01-13
+2026-01-09,2026-04-09,"Asiri Central | Engagement",active,414,actions:click_to_call_native_call_placed,260.0771256,"Using ad set budget",0,107671.93,651497,218640,2026-04-30,655449,6031,4687,2026-01-19
+2026-01-09,2026-04-09,"Asiri  IVF & Fertility | Leads",completed,216,actions:leadgen.other,182.1424537,"Using ad set budget",0,39342.77,279195,67522,2026-03-13,280656,3342,2855,2026-01-20
+2026-01-09,2026-04-09,"Asiri Matara | Reach",completed,264582,reach,56.69319908,"Using ad set budget",0,15000,430965,264582,2026-02-06,432328,756,493,2026-01-23
+2026-01-09,2026-04-09,"Asiri Matara | Engagement",completed,185311,actions:post_engagement,0.2158214,"Using ad set budget",0,39994.08,320391,189734,2026-02-27,319569,185311,1776,2026-01-23
+2026-01-09,2026-04-09,"Asiri Central | Traffic",completed,2657,actions:omni_landing_page_view,7.52728641,"Using ad set budget",0,20000,186850,102381,2026-02-09,204310,62766,6860,2026-01-26
+2026-01-09,2026-04-09,"Asiri Medical | Reach",completed,327416,reach,45.8132773,"Using ad set budget",0,15000,460509,327416,2026-02-28,461817,417,3,2026-02-02
+2026-01-09,2026-04-09,"Asiri Medical | Leads",completed,183,actions:leadgen.other,163.92710383,"Using ad set budget",0,29998.66,324041,83831,2026-03-14,325466,3060,2797,2026-02-11
+2026-01-09,2026-04-09,"Asiri Surgical | Leads",active,184,actions:leadgen.other,66.04907609,"Using ad set budget",0,12153.03,68665,38112,2026-04-10,68825,1209,917,2026-02-12
+2026-01-09,2026-04-09,"Asiri Surgical | Engagement",completed,231,actions:click_to_call_native_call_placed,172.79393939,"Using ad set budget",0,39915.4,282501,89202,2026-03-27,283421,2184,1389,2026-02-12
+2026-01-09,2026-04-09,"Asiri  IVF & Fertility | Video Views",recently_completed,269209,video_thruplay_watched_actions,0.66860343,"Using ad set budget",0,179994.06,642186,348875,2026-04-04,639867,422083,1956,2026-03-04
+2026-01-09,2026-04-09,"Asiri  IVF & Fertility | Engagement",recently_completed,130539,actions:post_engagement,0.15317024,"Using ad set budget",0,19994.69,235734,110283,2026-04-04,240761,130539,26,2026-03-04
+2026-01-09,2026-04-09,"Asiri Kandy | Leads",active,70,actions:leadgen.other,40.58014286,"Using ad set budget",0,2840.61,21978,12489,2026-04-15,22036,607,491,2026-04-01
+2026-01-09,2026-04-09,"Asiri Matara | Leads",active,12,actions:leadgen.other,115.35166667,"Using ad set budget",0,1384.22,8002,6249,2026-04-22,5235,2484,332,2026-04-08

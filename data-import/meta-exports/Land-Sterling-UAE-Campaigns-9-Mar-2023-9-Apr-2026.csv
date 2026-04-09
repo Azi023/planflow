@@ -1,0 +1,13 @@
+"Reporting starts","Reporting ends","Campaign name","Campaign delivery",Results,"Result indicator","Cost per results","Ad set budget","Ad set budget type","Amount spent (AED)",Impressions,Reach,Ends,Views,"Post engagements","Link clicks",Starts
+2023-03-09,2026-04-09,"Boost & Traffic Campaign",inactive,,,,"Using ad set budget",0,1599.98,288727,123625,2023-09-23,0,37403,299,2023-01-07
+2023-03-09,2026-04-09,"Lead Generation Campaign - 2nd",inactive,2000,actions:leadgen.other,147.283235,"Using ad set budget",0,294566.47,3359582,557781,Ongoing,1056,26032,16824,2023-01-18
+2023-03-09,2026-04-09,"Lead Gen | Auction",inactive,10,actions:leadgen.other,396.298,"Using ad set budget",0,3962.98,33619,22836,2023-06-18,0,181,144,2023-05-26
+2023-03-09,2026-04-09,"Snagging - Lead Campaign",inactive,7,actions:leadgen.other,203.79571429,"Using ad set budget",0,1426.57,18135,10521,2023-06-20,0,76,65,2023-05-30
+2023-03-09,2026-04-09,"YB's Lead Gen Campaign",inactive,28,actions:leadgen.other,107.10071429,3000,Lifetime,2998.82,31266,17402,2024-11-07,33378,3942,188,2024-10-24
+2023-03-09,2026-04-09,"Ellington Belgrove - Lead Generation",inactive,243,actions:leadgen.other,181.9318107,"Using ad set budget",0,44209.43,1239975,512644,Ongoing,1240263,5694,5236,2024-11-08
+2023-03-09,2026-04-09,"JM | Snagging | B2B & B2C | Whatsapp Option | July",inactive,,,,"Using ad set budget",0,1265.77,44176,21682,2025-08-31,44419,293,210,2025-07-14
+2023-03-09,2026-04-09,"Year End Valuation | Lead Gen",inactive,,,,200,Lifetime,142.93,1312,744,2025-12-30,1323,13,9,2025-11-18
+2023-03-09,2026-04-09,"JM | Year End Valuation | Landing Page Views | Nov 2025",completed,262,actions:omni_landing_page_view,1.22305344,500,Lifetime,320.44,83310,43442,2025-12-20,83515,758,726,2025-11-20
+2023-03-09,2026-04-09,"JM | Year End Valuation | Conversions | Nov 2025",completed,1,actions:offsite_conversion.fb_pixel_complete_registration,1399.89,1400,Lifetime,1399.89,29346,16802,2025-12-20,29581,773,752,2025-11-20
+2023-03-09,2026-04-09,"JM | Stellar Axis | LeadGen | 24th Dec 2025",inactive,9,actions:leadgen.other,203.75888889,2000,Lifetime,1833.83,10370,3197,2026-02-28,10529,911,65,2025-12-26
+2023-03-09,2026-04-09,"JM | Golden Visa | Conversions | April 2026",active,20,actions:onsite_conversion.messaging_conversation_started_7d,28.429,2400,Lifetime,568.58,49414,30982,2026-04-30,49699,212,196,2026-04-03

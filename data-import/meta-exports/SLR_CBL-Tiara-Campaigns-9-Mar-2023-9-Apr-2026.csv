@@ -1,0 +1,90 @@
+"Reporting starts","Reporting ends","Campaign name","Campaign delivery",Results,"Result indicator","Cost per results","Ad set budget","Ad set budget type","Amount spent (LKR)",Impressions,Reach,Ends,Views,"Post engagements","Link clicks",Starts
+2023-04-11,2026-04-09,"Reach - April 2023",inactive,2044730,reach,56.24214444,"Using ad set budget",0,115000,2695027,2044730,2023-05-12,0,38499,406,2023-04-11
+2023-04-11,2026-04-09,"Engagement - April 2023",inactive,431980,actions:post_engagement,0.89124497,"Using ad set budget",0,385000,1981601,1068899,2023-04-17,0,431980,876,2023-04-12
+2023-04-11,2026-04-09,"Awareness - Aug 2023",inactive,,,,"Using ad set budget",0,1160000,19624279,4276709,2023-08-31,0,1933155,277,2023-08-18
+2023-04-11,2026-04-09,"September 2023 Awareness",inactive,417628,reach,47.88950932,"Using ad set budget",0,20000,485602,417628,2023-10-01,0,800,4,2023-09-27
+2023-04-11,2026-04-09,"October 2023 Awareness",inactive,1334295,reach,82.44053976,"Using ad set budget",0,110000,3534581,1334295,2023-11-10,0,79735,38,2023-10-01
+2023-04-11,2026-04-09,"October 2023 Engagement",inactive,15134,actions:post_engagement,2.6430481,"Using ad set budget",0,39999.89,241805,142212,2023-11-06,0,15134,66,2023-10-27
+2023-04-11,2026-04-09,"November 2023 Awareness",inactive,983068,reach,81.37789044,"Using ad set budget",0,80000,2088238,983068,2023-12-17,0,13342,22,2023-11-12
+2023-04-11,2026-04-09,"November 2023 Engagement",inactive,39605,actions:post_engagement,1.00996995,"Using ad set budget",0,39999.86,199807,113358,2023-12-10,0,39605,3,2023-11-17
+2023-04-11,2026-04-09,"December 2023 Engagement",inactive,662311,actions:post_engagement,0.38501488,"Using ad set budget",0,254999.59,2037660,925759,2024-01-06,0,662311,70,2023-12-11
+2023-04-11,2026-04-09,"December 2023 Awareness",inactive,1180388,reach,80.482011,"Using ad set budget",0,95000,2802898,1180388,2024-01-16,0,35057,15,2023-12-18
+2023-04-11,2026-04-09,"Jan & Feb 2024 Awareness",inactive,1162343,reach,77.42981203,"Using ad set budget",0,90000,2355546,1162343,2024-03-01,0,18494,16,2024-01-23
+2023-04-11,2026-04-09,"Jan & Feb 2024 Engagement",inactive,72019,actions:post_engagement,1.11076619,"Using ad set budget",0,79996.27,380340,214139,2024-03-21,0,72019,4,2024-01-23
+2023-04-11,2026-04-09,"March 2024 Awareness",inactive,591357,reach,67.64103579,"Using ad set budget",0,40000,890937,591357,2024-03-31,0,1207,5,2024-03-15
+2023-04-11,2026-04-09,"April 2024 Awareness",inactive,421963,reach,47.39752064,"Using ad set budget",0,20000,462346,421963,2024-04-14,0,686,11,2024-04-10
+2023-04-11,2026-04-09,"April 2024 Engagement",inactive,2795,actions:post_engagement,3.57766011,"Using ad set budget",0,9999.56,31472,24527,2024-04-14,0,2795,,2024-04-14
+2023-04-11,2026-04-09,"May 2024 Awareness",inactive,771325,reach,90.75292516,"Using ad set budget",0,70000,1643096,771325,2024-05-24,0,16350,258,2024-05-11
+2023-04-11,2026-04-09,"May 2024 Engagement",inactive,44825,actions:post_engagement,0.22308979,"Using ad set budget",0,10000,100529,78809,2024-06-02,0,44825,,2024-05-30
+2023-04-11,2026-04-09,"June 2024 awareness",inactive,1043748,reach,126.94633187,"Using ad set budget",0,132499.98,2938526,1043748,2024-06-30,0,20375,58,2024-06-01
+2023-04-11,2026-04-09,"June 2024 Engagement",inactive,8357,actions:post_engagement,3.29064616,"Using ad set budget",0,27499.93,154123,91093,2024-07-07,0,8357,13,2024-06-16
+2023-04-11,2026-04-09,"July 2024 awareness",inactive,1026178,reach,97.44891237,"Using ad set budget",0,99999.93,2543648,1026178,2024-07-29,0,3590,32,2024-07-01
+2023-04-11,2026-04-09,"July engagement 2024",inactive,14383,actions:post_engagement,4.17159146,"Using ad set budget",0,60000,168443,105884,2024-07-31,0,14383,10,2024-07-22
+2023-04-11,2026-04-09,"August awareness 2024",inactive,1076165,reach,90.19855691,"Using ad set budget",0,97068.53,2830386,1076165,2024-09-29,0,37800,16,2024-08-01
+2023-04-11,2026-04-09,"August engagement 2024",inactive,39070,actions:post_engagement,0.25594395,"Using ad set budget",0,9999.73,104419,88118,2024-08-15,0,39070,3,2024-08-13
+2023-04-11,2026-04-09,"September Awareness 2024",inactive,,,,"Using ad set budget",0,1468274.47,19057094,2988028,2024-10-17,7475688,3180524,882,2024-09-01
+2023-04-11,2026-04-09,"September 2024 engagement",inactive,9335,actions:post_engagement,3.74929298,"Using ad set budget",0,34999.65,119196,82972,2024-09-14,0,9335,38,2024-09-10
+2023-04-11,2026-04-09,"September 2024 Traffic",inactive,150095,actions:link_click,2.05301123,"Using ad set budget",0,308146.72,2456903,672937,2024-10-15,679415,291742,150095,2024-09-19
+2023-04-11,2026-04-09,"October 2024 awareness",inactive,4763586,reach,129.91939896,"Using ad set budget",0,618882.23,11149308,4763586,2024-11-07,9978158,692330,142,2024-10-01
+2023-04-11,2026-04-09,"October 2024 Engagement",not_delivering,22899,actions:post_engagement,4.96327045,"Using ad set budget",0,113653.93,296570,133589,2024-10-18,297074,22899,9,2024-10-04
+2023-04-11,2026-04-09,"November 2024 awareness",inactive,382296,reach,52.31548329,"Using ad set budget",0,20000,521202,382296,2024-11-26,523472,327,6,2024-11-07
+2023-04-11,2026-04-09,"November 2024 Engagement",not_delivering,2194,actions:post_engagement,4.55682771,"Using ad set budget",0,9997.68,30029,25959,2024-11-14,30113,2194,1,2024-11-13
+2023-04-11,2026-04-09,"December engagement 2024",inactive,644158,actions:post_engagement,0.48065309,"Using ad set budget",0,309616.53,2427509,1011474,2024-12-29,2406677,644158,20,2024-12-02
+2023-04-11,2026-04-09,"December Awareness 2024",not_delivering,,,,"Using ad set budget",0,440447.38,6688764,1864830,2025-01-07,6712703,557934,112,2024-12-02
+2023-04-11,2026-04-09,"January Awareness 2025",inactive,850537,reach,79.9489499,"Using ad set budget",0,67999.54,2015948,850537,2025-01-31,2013190,18063,3,2025-01-14
+2023-04-11,2026-04-09,"January Engagement 2025",inactive,48905,actions:post_engagement,0.44982578,"Using ad set budget",0,21998.73,239837,165760,2025-01-25,265415,48905,14,2025-01-15
+2023-04-11,2026-04-09,"February Awareness 2025",inactive,,,,"Using ad set budget",0,1759999.07,15944230,5057667,2025-04-10,16058282,4328187,47,2025-02-04
+2023-04-11,2026-04-09,"February Engagement 2025",inactive,52220,actions:post_engagement,0.57446898,"Using ad set budget",0,29998.77,223957,161484,2025-03-02,235184,52220,4,2025-02-13
+2023-04-11,2026-04-09,"March Awareness 2025",inactive,938978,reach,95.84705925,"Using ad set budget",0,89998.28,2180843,938978,2025-04-02,2196137,1469,7,2025-03-04
+2023-04-11,2026-04-09,"March Engagement 2025",inactive,10115,actions:post_engagement,1.95599011,"Using ad set budget",0,19784.84,137169,98156,2025-03-26,137691,10115,6,2025-03-19
+2023-04-11,2026-04-09,"April Awareness 2025",inactive,,,,"Using ad set budget",0,1629964.24,11001746,4620222,2025-05-02,11247571,2966184,81,2025-04-03
+2023-04-11,2026-04-09,"May Engagement 2025",inactive,5471,actions:post_engagement,1.82702979,"Using ad set budget",0,9995.68,69292,54179,2025-05-13,69777,5471,7,2025-05-08
+2023-04-11,2026-04-09,"May Awareness 2025",inactive,1123810,reach,80.0099483,"Using ad set budget",0,89915.98,2864035,1123810,2025-05-26,2895685,25625,12,2025-05-08
+2023-04-11,2026-04-09,"June Awareness 2025",not_delivering,,,,"Using ad set budget",0,448078.72,6789261,2879086,2025-06-18,6865337,2266567,76,2025-06-08
+2023-04-11,2026-04-09,CBL_Tiara_Rasa_Hara_Yathra_Awareness_Video_06Jul2025,inactive,322546,reach,33.80181431,70000,Lifetime,10902.64,332832,322546,2025-07-10,262122,18341,,2025-07-06
+2023-04-11,2026-04-09,CBL_Tiara_Rasa_Hara_Yathra_Engagement_Video_06Jul2025,inactive,30242,actions:post_engagement,0.17363468,30000,Lifetime,5251.06,67423,62418,2025-07-10,69976,30242,,2025-07-06
+2023-04-11,2026-04-09,CBL_Tiara_Rasa_Hara_Yathra_Thalavila_Feast_Awareness_Static_Teaser_01Aug2025,inactive,622656,reach,44.62786836,"Using ad set budget",0,27787.81,790711,622656,2025-08-03,800111,1009,5,2025-08-01
+2023-04-11,2026-04-09,CBL_Tiara_Rasa_Hara_Yathra_Thalavila_Feast_Awareness_Photo_Album_01Aug2025,completed,966297,reach,41.21086995,"Using ad set budget",0,39821.94,1124893,966297,2025-08-06,1133551,1959,36,2025-08-02
+2023-04-11,2026-04-09,CBL_Tiara_Rasa_Hara_Yathra_Thalavila_Feast_GEO_Awareness_Photo_Album_01Aug2025,completed,448728,reach,44.33928794,20000,Lifetime,19896.28,588042,448728,2025-08-06,591530,1084,13,2025-08-03
+2023-04-11,2026-04-09,CBL_Tiara_Rasa_Hara_Yathra_Thalavila_Feast_Awareness_Video_03Aug2025,completed,2869049,reach,52.28213251,150000,Lifetime,150000,3444047,2869049,2025-08-07,3004064,335305,16,2025-08-04
+2023-04-11,2026-04-09,CBL_Tiara_Rasa_Hara_Yathra_Thalavila_Feast_GEO_Awareness_Video_03Aug2025,completed,858327,reach,58.24120644,50000,Lifetime,49990,1261596,858327,2025-08-07,1176139,93782,4,2025-08-04
+2023-04-11,2026-04-09,CBL_Tiara_Rasa_Hara_Yathra_Kandy_Perahera_Engagement_Call_Static_05Aug2025,inactive,860,actions:click_to_call_native_call_placed,168.39676744,150000,Lifetime,144821.22,1022456,514878,2025-08-07,1028710,12846,9266,2025-08-05
+2023-04-11,2026-04-09,CBL_Tiara_Rasa_Hara_Yathra_Kandy_Perahera_Awareness_Static_05Aug2025,inactive,4166806,reach,57.11288455,250000,Lifetime,237978.31,4462869,4166806,2025-08-07,4515872,10119,5866,2025-08-05
+2023-04-11,2026-04-09,CBL_Tiara_Rasa_Hara_Yathra_Thalavila_Feast_Awareness_Photo_Album_02_04Aug2025,completed,766649,reach,52.17443706,"Using ad set budget",0,39999.48,1013044,766649,2025-08-07,1015819,2079,14,2025-08-05
+2023-04-11,2026-04-09,CBL_Tiara_Rasa_Hara_Yathra_Thalavila_Feast_GEO_Awareness_Photo_Album_02_04Aug2025,completed,386965,reach,51.67524195,20000,Lifetime,19996.51,510142,386965,2025-08-07,510562,3540,6,2025-08-05
+2023-04-11,2026-04-09,CBL_Tiara_Rasa_Hara_Yathra_Kandy_Perahera_Awareness_Video_05Aug2025,inactive,2746730,reach,75.60252009,250000,Lifetime,207659.71,3803186,2746730,2025-08-07,3558019,339984,16,2025-08-05
+2023-04-11,2026-04-09,CBL_Tiara_Rasa_Hara_Yathra_Kandy_Perahera_Awareness_Carousel_06Aug2025,inactive,2268382,reach,61.57362825,200000,Lifetime,139672.51,2497874,2268382,2025-08-07,2505509,1299,27,2025-08-06
+2023-04-11,2026-04-09,CBL_Tiara_Rasa_Hara_Yathra_Kandy_Perahera_Awareness_PhotoAlbum_01_07Aug2025,completed,4577674,reach,76.44217784,350000,Lifetime,349927.37,8081009,4577674,2025-08-24,8140081,58024,369,2025-08-07
+2023-04-11,2026-04-09,CBL_Tiara_Rasa_Hara_Yathra_Kandy_Perahera_Engagement_PhotoAlbum_01_07Aug2025,completed,106091,actions:post_engagement,0.94181882,100000,Lifetime,99918.5,843576,608855,2025-08-24,847923,106091,135,2025-08-07
+2023-04-11,2026-04-09,CBL_Tiara_Rasa_Hara_Yathra_Kandy_Perahera_Awareness_Video_01_08Aug2025,completed,4263867,reach,93.79457661,400000,Lifetime,399927.6,8420755,4263867,2025-08-24,7409005,1258287,31,2025-08-08
+2023-04-11,2026-04-09,CBL_Tiara_Rasa_Hara_Yathra_Kandy_Perahera_Awareness_15Sec_Video_03_08Aug2025,completed,2677404,reach,93.35370755,250000,Lifetime,249945.59,5084588,2677404,2025-08-24,4199901,1037591,35,2025-08-08
+2023-04-11,2026-04-09,CBL_Tiara_Rasa_Hara_Yathra_Kandy_Perahera_Awareness_IG_15Sec_Video_03_08Aug2025,completed,986613,reach,101.33743423,100000,Lifetime,99980.83,1732772,986613,2025-08-24,2181869,295003,2,2025-08-08
+2023-04-11,2026-04-09,CBL_Tiara_Rasa_Hara_Yathra_Kandy_Perahera_Awareness_PhotoAlbum_02_08Aug2025,completed,6221680,reach,56.25418536,350000,Lifetime,349995.54,6490947,6221680,2025-08-24,6512253,81135,477,2025-08-08
+2023-04-11,2026-04-09,CBL_Tiara_Rasa_Hara_Yathra_Kandy_Perahera_Engagement_PhotoAlbum_02_07Aug2025,completed,101579,actions:post_engagement,0.98388427,100000,Lifetime,99941.98,1014619,685725,2025-08-24,1019855,101579,177,2025-08-08
+2023-04-11,2026-04-09,CBL_Tiara_Rasa_Hara_Yathra_Kandy_Perahera_Awareness_Video_02_08Aug2025,completed,4033818,reach,99.1546396,400000,Lifetime,399971.77,8003743,4033818,2025-08-24,7217229,1286893,29,2025-08-09
+2023-04-11,2026-04-09,CBL_Tiara_Rasa_Hara_Yathra_Kandy_Perahera_Awareness_Video_03_11Aug2025,completed,2441869,reach,81.8361673,200000,Lifetime,199833.2,4176934,2441869,2025-08-17,3763221,815060,777,2025-08-11
+2023-04-11,2026-04-09,CBL_Tiara_GoChok_Awareness_Static_Teaser_27Aug2025,completed,1349603,reach,51.86710462,70000,Lifetime,70000,1461953,1349603,2025-08-29,1445764,16556,6,2025-08-27
+2023-04-11,2026-04-09,CBL_Tiara_GoChok_Engagement_Static_Teaser_27Aug2025,completed,68774,actions:post_engagement,0.43621136,30000,Lifetime,30000,188710,163522,2025-08-29,243031,68774,1,2025-08-27
+2023-04-11,2026-04-09,CBL_Tiara_GoChok_Launch_S_TVC_Awareness_FB_29Aug2025,completed,3553742,reach,140.69622105,500000,Lifetime,499998.07,11800488,3553742,2025-10-14,10601317,921135,37,2025-08-29
+2023-04-11,2026-04-09,CBL_Tiara_GoChok_Launch_S_TVC_Engagement_FB_29Aug2025,completed,1554778,actions:post_engagement,0.22510596,350000,Lifetime,349989.79,3872423,1373991,2025-10-14,4016627,1554778,132,2025-08-30
+2023-04-11,2026-04-09,CBL_Tiara_GoChok_Launch_S_TVC_Awareness_IG_29Aug2025,completed,1303896,reach,230.06359403,300000,Lifetime,299979,4971244,1303896,2025-10-14,5869545,420669,10,2025-08-30
+2023-04-11,2026-04-09,CBL_Tiara_GoChok_Launch_S_TVC_Engagement_IG_29Aug2025,completed,645815,actions:post_engagement,0.20129604,130000,Lifetime,130000,1232085,278417,2025-10-14,2730583,645815,,2025-08-31
+2023-04-11,2026-04-09,CBL_Tiara_GoChok_Launch_T_TVC_Awareness_01Sep2025,completed,1056178,reach,85.21271983,90000,Lifetime,89999.8,1219196,1056178,2025-10-14,1070714,124169,5,2025-09-01
+2023-04-11,2026-04-09,CBL_Tiara_GoChok_Launch_T_TVC_Engagement_01Sep2025,completed,108695,actions:post_engagement,0.27598749,30000,Lifetime,29998.46,253859,122720,2025-10-14,299964,108695,8,2025-09-01
+2023-04-11,2026-04-09,"JM | Rollo | TVC | Awareness | Oct 2025",completed,1040657,video_thruplay_watched_actions,0.63421473,"Using ad set budget",0,660000,3879122,785544,2025-11-13,5056227,1576832,425,2025-10-13
+2023-04-11,2026-04-09,"JM | Rollo | TVC |  Engagements | Oct 2025",completed,371347,actions:post_engagement,0.24234737,"Using ad set budget",0,89994.97,911041,418798,2025-11-13,1066852,371347,40,2025-10-13
+2023-04-11,2026-04-09,"JM | TIARA | TVC | ThruPlays | Oct 2025",not_delivering,2473443,video_thruplay_watched_actions,0.26682913,"Using ad set budget",0,659986.64,5632358,1928134,2025-11-16,6468732,3023934,74,2025-10-16
+2023-04-11,2026-04-09,"JM | TIARA | TVC | Engagement | Oct 2025",not_delivering,501823,actions:post_engagement,0.17933742,"Using ad set budget",0,89995.64,1257271,701587,2025-11-16,1429750,501823,33,2025-10-16
+2023-04-11,2026-04-09,"JM | Tiara | Engagement | Retainer",not_delivering,56995,actions:post_engagement,3.06109185,"Using ad set budget",0,174466.93,548900,177876,2026-04-02,551350,56995,557,2025-10-21
+2023-04-11,2026-04-09,"JM | Tiara | ThruPlays | Retainer",not_delivering,376034,video_thruplay_watched_actions,0.4768997,"Using ad set budget",0,179330.5,1068143,674365,2026-01-30,1051065,536864,22,2025-10-28
+2023-04-11,2026-04-09,"JM | Tiara | ThruPlays | Ah - Ha",completed,1775993,video_thruplay_watched_actions,0.52644935,"Using ad set budget",0,934970.36,5445080,2122869,2026-02-26,5514172,2953466,103,2025-11-26
+2023-04-11,2026-04-09,"JM | Tiara | Engagement | Ah - Ha",completed,1001483,actions:post_engagement,0.26458287,"Using ad set budget",0,264975.25,2057686,967192,2026-03-31,2252531,1001483,191,2025-11-26
+2023-04-11,2026-04-09,"JM | Tiara | ThruPlays | Rasahara Suwa Suraksha",completed,1413282,video_thruplay_watched_actions,0.74292487,"Using ad set budget",0,1049962.35,5889102,2004425,2025-12-31,5811737,3570621,51587,2025-12-12
+2023-04-11,2026-04-09,"JM | Tiara | Engagement  | Rasahara Suwa Suraksha",completed,1052878,actions:post_engagement,0.18995272,"Using ad set budget",0,199997.04,1734024,849255,2025-12-31,1786550,1052878,10887,2025-12-12
+2023-04-11,2026-04-09,"JM | Tiara | Engagement | Christmas Recipes",completed,518927,actions:post_engagement,0.48172899,"Using ad set budget",0,249982.18,1918565,777196,2025-12-31,2037833,518927,6707,2025-12-22
+2023-04-11,2026-04-09,"JM | Tiara | ThruPlays | Christmas Recipes",completed,1125276,video_thruplay_watched_actions,0.66650315,"Using ad set budget",0,750000,1995999,802848,2025-12-31,1989278,1375805,12393,2025-12-22
+2023-04-11,2026-04-09,"JM | Tiara | Reach | SLNQA",completed,491684,reach,61.01479812,"Using ad set budget",0,30000,701511,491684,2026-01-31,706098,1107,6,2026-01-22
+2023-04-11,2026-04-09,"JM | Tiara | Engagement | SLNQA",completed,15573,actions:post_engagement,1.28427406,"Using ad set budget",0,20000,226227,155170,2026-01-31,227726,15573,53,2026-01-22
+2023-04-11,2026-04-09,"JM | Tiara | Aurudu Campaign | R&F TVC Video cuts",active,2385658,reach,111.83335583,"Using ad set budget",0,266796.14,3767781,2385658,2026-04-30,3176986,206126,1628,2026-04-05
+2023-04-11,2026-04-09,"JM | Tiara | Aurudu Campaign | TrueViews | TVC Main",active,408344,video_thruplay_watched_actions,0.82167949,"Using ad set budget",0,335527.89,927866,891442,2026-04-30,913822,587774,1344,2026-04-04
+2023-04-11,2026-04-09,"JM | Tiara | Aurudu Campaign | Reach | Trailer",active,415626,reach,56.02190431,"Using ad set budget",0,23284.16,453664,415626,2026-04-10,379543,13653,23,2026-04-07

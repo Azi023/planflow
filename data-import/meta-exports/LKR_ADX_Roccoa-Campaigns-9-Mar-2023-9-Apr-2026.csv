@@ -1,0 +1,12 @@
+"Reporting starts","Reporting ends","Campaign name","Campaign delivery",Results,"Result indicator","Cost per results","Ad set budget","Ad set budget type","Amount spent (LKR)",Impressions,Reach,Ends,Views,"Post engagements","Link clicks",Starts
+2026-02-06,2026-04-09,"Engagement | Roccoa",not_delivering,881170,actions:post_engagement,0.19321559,"Using ad set budget",0,170255.78,1619405,960694,2026-03-06,1781216,881170,24,2026-02-06
+2026-02-06,2026-04-09,"Roccoa Valentine's Campaign | Traffic",completed,53961,actions:link_click,3.69061415,"Using ad set budget",0,199149.23,1810910,579282,2026-02-16,1592351,179093,53961,2026-02-13
+2026-02-06,2026-04-09,"Roccoa Valentine's Campaign | Reach",completed,935674,reach,74.81238124,"Using ad set budget",0,70000,1294763,935674,2026-02-16,1317413,2302,1847,2026-02-14
+2026-02-06,2026-04-09,"Roccoa Valentine's Campaign | ThruPlays",completed,144203,video_thruplay_watched_actions,0.48542679,"Using ad set budget",0,70000,737973,590213,2026-02-16,739774,344373,1298,2026-02-14
+2026-02-06,2026-04-09,"Roccoa Valentine's Campaign | Engagement",completed,269091,actions:post_engagement,0.22297193,"Using ad set budget",0,59999.74,512486,420424,2026-02-16,526682,269091,1615,2026-02-14
+2026-02-06,2026-04-09,"ThruPlays | Roccoa",not_delivering,73334,video_thruplay_watched_actions,0.88676276,"Using ad set budget",0,65029.86,260988,213484,2026-03-06,264344,124007,16,2026-02-19
+2026-02-06,2026-04-09,"Aloka Warsha | Post Event | Reach",completed,5118699,reach,326.1796015,"Using ad set budget",0,1669615.2,28035329,5118699,2026-03-06,24965904,2103678,290,2026-02-24
+2026-02-06,2026-04-09,"Aloka Warsha | Post Event | Engagement",completed,2818070,actions:post_engagement,0.28388157,"Using ad set budget",0,799998.13,9197865,3166572,2026-03-06,9351239,2818070,921,2026-02-25
+2026-02-06,2026-04-09,"Don't Roccoa | Reach",recently_completed,3245902,reach,302.30476459,"Using ad set budget",0,981251.64,15904026,3245902,2026-04-05,14473302,1805023,11731,2026-03-20
+2026-02-06,2026-04-09,"Don't Roccoa | ThruPlays",recently_completed,1487507,video_thruplay_watched_actions,0.60495441,"Using ad set budget",0,899873.92,7746258,3268311,2026-04-05,8053238,3711933,10867,2026-03-20
+2026-02-06,2026-04-09,"Don't Roccoa | Engagement",recently_completed,1163968,actions:post_engagement,0.2066037,"Using ad set budget",0,240480.1,2268613,1281416,2026-04-05,2385632,1163968,1308,2026-03-20
