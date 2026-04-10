@@ -33,10 +33,15 @@ export class PlanVersion {
   })
   changeType: string;
 
-  @Column({ name: 'change_summary', type: 'varchar', length: 500, nullable: true })
+  @Column({
+    name: 'change_summary',
+    type: 'varchar',
+    length: 500,
+    nullable: true,
+  })
   changeSummary: string | null;
 
-  @Column({ name: 'created_by', nullable: true })
+  @Column({ name: 'created_by', type: 'varchar', length: 255, nullable: true })
   createdBy: string | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
