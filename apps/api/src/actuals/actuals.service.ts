@@ -107,19 +107,60 @@ export class ActualsService {
     return actual;
   }
 
-  create(dto: CreateActualDto): Promise<CampaignActual> {
+  private computeDerivedMetrics(data: {
+    actualSpend?: number | null;
+    actualImpressions?: number | null;
+    actualClicks?: number | null;
+    actualReach?: number | null;
+  }): {
+    actualCpm: number | null;
+    actualCpc: number | null;
+    actualCtr: number | null;
+    actualFrequency: number | null;
+  } {
+    const spend = Number(data.actualSpend ?? 0);
+    const impressions = Number(data.actualImpressions ?? 0);
+    const clicks = Number(data.actualClicks ?? 0);
+    const reach = Number(data.actualReach ?? 0);
+
+    return {
+      actualCpm: impressions > 0 ? Math.round((spend / impressions) * 1000 * 100) / 100 : null,
+      actualCpc: clicks > 0 ? Math.round((spend / clicks) * 100) / 100 : null,
+      actualCtr: impressions > 0 ? Math.round((clicks / impressions) * 100 * 10000) / 10000 : null,
+      actualFrequency: reach > 0 ? Math.round((impressions / reach) * 100) / 100 : null,
+    };
+  }
+
+  async create(dto: CreateActualDto): Promise<CampaignActual> {
+    const derived = this.computeDerivedMetrics({
+      actualSpend: dto.actualSpend,
+      actualImpressions: dto.actualImpressions,
+      actualClicks: dto.actualClicks,
+      actualReach: dto.actualReach,
+    });
     const actual = this.actualRepo.create({
       ...dto,
       periodStart: dto.periodStart ? new Date(dto.periodStart) : null,
       periodEnd: dto.periodEnd ? new Date(dto.periodEnd) : null,
       source: dto.source ?? 'manual',
+      // Compute derived metrics if not explicitly provided
+      actualCpm: dto.actualCpm ?? derived.actualCpm,
+      actualCpc: dto.actualCpc ?? derived.actualCpc,
+      actualCtr: dto.actualCtr ?? derived.actualCtr,
+      actualFrequency: dto.actualFrequency ?? derived.actualFrequency,
     });
     return this.actualRepo.save(actual);
   }
 
   async bulkCreate(dto: BulkCreateActualsDto): Promise<{ created: number }> {
-    const rows = dto.entries.map((entry) =>
-      this.actualRepo.create({
+    const rows = dto.entries.map((entry) => {
+      const derived = this.computeDerivedMetrics({
+        actualSpend: entry.actualSpend,
+        actualImpressions: entry.actualImpressions,
+        actualClicks: entry.actualClicks,
+        actualReach: entry.actualReach,
+      });
+      return this.actualRepo.create({
         planId: dto.planId,
         periodLabel: dto.periodLabel ?? null,
         periodStart: dto.periodStart ? new Date(dto.periodStart) : null,
@@ -133,14 +174,15 @@ export class ActualsService {
         actualLeads: entry.actualLeads ?? null,
         actualLandingPageViews: entry.actualLandingPageViews ?? null,
         actualSpend: entry.actualSpend ?? null,
-        actualCpm: entry.actualCpm ?? null,
-        actualCpc: entry.actualCpc ?? null,
-        actualCtr: entry.actualCtr ?? null,
-        actualFrequency: entry.actualFrequency ?? null,
+        // Compute derived metrics if not explicitly provided
+        actualCpm: entry.actualCpm ?? derived.actualCpm,
+        actualCpc: entry.actualCpc ?? derived.actualCpc,
+        actualCtr: entry.actualCtr ?? derived.actualCtr,
+        actualFrequency: entry.actualFrequency ?? derived.actualFrequency,
         notes: entry.notes ?? null,
         source: 'bulk_paste',
-      }),
-    );
+      });
+    });
     await this.actualRepo.save(rows);
     return { created: rows.length };
   }

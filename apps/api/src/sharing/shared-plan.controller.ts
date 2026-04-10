@@ -29,16 +29,23 @@ export class SharedPlanController {
   @Post(':token/comments')
   async addComment(
     @Param('token') token: string,
-    @Body() body: { content: string; authorName: string; authorEmail?: string },
+    @Body() body: Record<string, string>,
     @Ip() ip: string,
   ) {
-    const comment = await this.sharingService.addComment(token, body);
+    // Accept both 'authorName' and 'author' field names for compatibility
+    const authorName = body.authorName ?? body.author ?? 'Anonymous';
+    const normalizedBody = {
+      content: body.content ?? '',
+      authorName,
+      authorEmail: body.authorEmail ?? body.email,
+    };
+    const comment = await this.sharingService.addComment(token, normalizedBody);
     this.auditService.log(
       'shared.commented',
       'media_plan',
       null,
       null,
-      { authorName: body.authorName },
+      { authorName },
       ip,
     );
     return comment;
@@ -48,19 +55,18 @@ export class SharedPlanController {
   @Post(':token/approve')
   async approvePlan(
     @Param('token') token: string,
-    @Body() body: { authorName: string },
+    @Body() body: Record<string, string>,
     @Ip() ip: string,
   ) {
-    const result = await this.sharingService.clientApprove(
-      token,
-      body.authorName,
-    );
+    // authorName is optional — default to 'Client' if not provided
+    const authorName = body.authorName ?? body.author ?? 'Client';
+    const result = await this.sharingService.clientApprove(token, authorName);
     this.auditService.log(
       'shared.approved',
       'media_plan',
       null,
       null,
-      { authorName: body.authorName },
+      { authorName },
       ip,
     );
     return result;
@@ -70,20 +76,23 @@ export class SharedPlanController {
   @Post(':token/request-revision')
   async requestRevision(
     @Param('token') token: string,
-    @Body() body: { authorName: string; reason?: string },
+    @Body() body: Record<string, string>,
     @Ip() ip: string,
   ) {
+    // Accept both 'reason' and 'comment' field names; authorName optional
+    const authorName = body.authorName ?? body.author ?? 'Client';
+    const reason = body.reason ?? body.comment;
     const result = await this.sharingService.clientRequestRevision(
       token,
-      body.authorName,
-      body.reason,
+      authorName,
+      reason,
     );
     this.auditService.log(
       'shared.revision_requested',
       'media_plan',
       null,
       null,
-      { authorName: body.authorName, reason: body.reason },
+      { authorName, reason },
       ip,
     );
     return result;

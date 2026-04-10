@@ -14,7 +14,7 @@ export class ExportController {
   async exportExcel(
     @Param('id') id: string,
     @Res() res: Response,
-    @Req() req: { user?: { sub?: string } },
+    @Req() req: { user?: { sub?: string; email?: string } },
   ): Promise<void> {
     const { buffer, filename } = await this.exportService.exportExcel(id);
     this.auditService.log(
@@ -23,6 +23,8 @@ export class ExportController {
       id,
       req.user?.sub ?? null,
       { format: 'excel' },
+      undefined,
+      req.user?.email,
     );
     res.set({
       'Content-Type':
@@ -37,7 +39,7 @@ export class ExportController {
   async exportPptx(
     @Param('id') id: string,
     @Res() res: Response,
-    @Req() req: { user?: { sub?: string } },
+    @Req() req: { user?: { sub?: string; email?: string } },
   ): Promise<void> {
     const { buffer, filename } = await this.exportService.exportPptx(id);
     this.auditService.log(
@@ -46,6 +48,8 @@ export class ExportController {
       id,
       req.user?.sub ?? null,
       { format: 'pptx' },
+      undefined,
+      req.user?.email,
     );
     res.set({
       'Content-Type':
@@ -60,7 +64,7 @@ export class ExportController {
   async exportPdf(
     @Param('id') id: string,
     @Res() res: Response,
-    @Req() req: { user?: { sub?: string } },
+    @Req() req: { user?: { sub?: string; email?: string } },
   ): Promise<void> {
     const { buffer, filename } = await this.exportService.exportPdf(id);
     this.auditService.log(
@@ -69,6 +73,8 @@ export class ExportController {
       id,
       req.user?.sub ?? null,
       { format: 'pdf' },
+      undefined,
+      req.user?.email,
     );
     res.set({
       'Content-Type': 'application/pdf',

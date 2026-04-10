@@ -329,8 +329,17 @@ export class MediaPlansService {
     id: string,
     dto: CreatePlanDto,
     userId?: string,
+    userEmail?: string,
   ): Promise<MediaPlan> {
     const plan = await this.findOne(id);
+
+    // Snapshot BEFORE applying changes (Task 2: version on every edit)
+    const rowCount = (plan.rows ?? []).length;
+    const changeSummary = dto.rows !== undefined
+      ? `Updated ${dto.rows.length} row${dto.rows.length !== 1 ? 's' : ''}`
+      : 'Plan details updated';
+    this.createVersion(id, 'rows_updated', changeSummary, userId).catch(() => {});
+
     const updated = this.planRepo.merge(plan, {
       clientId: dto.clientId,
       productId: dto.productId,
@@ -365,9 +374,65 @@ export class MediaPlansService {
 
     const result = await this.findOne(id);
 
-    this.auditService.log('plan.updated', 'media_plan', id, userId ?? null, {
-      campaignName: dto.campaignName,
-    });
+    this.auditService.log(
+      'plan.updated',
+      'media_plan',
+      id,
+      userId ?? null,
+      { campaignName: dto.campaignName, rowCount },
+      undefined,
+      userEmail,
+    );
+
+    return result;
+  }
+
+  /** Partial update — only merges fields that are provided (Task 7) */
+  async partialUpdate(
+    id: string,
+    dto: Partial<CreatePlanDto>,
+    userId?: string,
+    userEmail?: string,
+  ): Promise<MediaPlan> {
+    const plan = await this.findOne(id);
+
+    // Snapshot before applying changes
+    this.createVersion(id, 'rows_updated', 'Plan partially updated', userId).catch(() => {});
+
+    const patchFields: Record<string, unknown> = {};
+    const scalarKeys = [
+      'clientId', 'productId', 'campaignName', 'campaignPeriod', 'startDate',
+      'endDate', 'bufferPct', 'totalBudget', 'fee1Pct', 'fee1Label', 'fee2Pct',
+      'fee2Label', 'referenceNumber', 'preparedBy', 'currency', 'usdExchangeRate',
+      'variantName', 'variantGroupId', 'notes',
+    ] as const;
+
+    for (const key of scalarKeys) {
+      if (dto[key] !== undefined) {
+        patchFields[key] = dto[key];
+      }
+    }
+
+    if (Object.keys(patchFields).length > 0) {
+      await this.planRepo.update(id, patchFields as Parameters<typeof this.planRepo.update>[1]);
+    }
+
+    if (dto.rows !== undefined) {
+      await this.rowRepo.delete({ planId: id });
+      await this.upsertRows(id, dto.rows ?? []);
+    }
+
+    const result = await this.findOne(id);
+
+    this.auditService.log(
+      'plan.updated',
+      'media_plan',
+      id,
+      userId ?? null,
+      { fields: Object.keys(patchFields), campaignName: result.campaignName },
+      undefined,
+      userEmail,
+    );
 
     return result;
   }

@@ -64,9 +64,19 @@ export class MediaPlansController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CreatePlanDto,
-    @Req() req: { user: { sub: string } },
+    @Req() req: { user: { sub: string; email: string } },
   ) {
-    return this.mediaPlansService.update(id, dto, req.user.sub);
+    return this.mediaPlansService.update(id, dto, req.user.sub, req.user.email);
+  }
+
+  /** Partial update — only updates the fields that are sent (Task 7) */
+  @Patch(':id')
+  partialUpdate(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: Partial<CreatePlanDto>,
+    @Req() req: { user: { sub: string; email: string } },
+  ) {
+    return this.mediaPlansService.partialUpdate(id, dto, req.user.sub, req.user.email);
   }
 
   @Patch(':id/status')
