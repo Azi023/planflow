@@ -1307,6 +1307,55 @@ _PERIOD_PATTERN = re.compile(
 )
 
 
+# Keyword → product name map for Peoples Bank (ordered: more specific first)
+_PB_PRODUCT_KEYWORDS: list[tuple[list[str], str]] = [
+    (["vehicle loan", "vehicle loan leads", "vehicle loan video"], "Vehicle Loan"),
+    (["housing loan", "housing loan google", "housing loan meta"], "Housing Loan"),
+    (["professional loan", "professional-loan"], "Professional Loan"),
+    (["sme loan", "sme day", "sme sector", "sme leads", "revitalisation & revival sme", "revitalisation revival sme"], "SME Loan"),
+    (["business loan", "biz"], "Business Loan"),
+    (["remittance", "vasi kotiyai", "november-remittance", "remittance campaign", "ethera hamuwa", "shrama harasara", "sanwathsara pranama"], "Remittance"),
+    (["christmas credit card", "christmas campaign", "christmas"], "Christmas Campaign"),
+    (["vanitha vasana credit card", "vanitha vasana", "vanitha saviya"], "Vanitha Vasana Credit Card"),
+    (["card offer", "card offers", "avurudu", "havelock city mall credit card", "credit card", "0_ credit card", "0 instalment"], "Credit Cards"),
+    (["leasing"], "Leasing"),
+    (["peoples pay", "pay app", "pay yt", "pay ytp"], "Pay App"),
+    (["page like campaign", "fb likes", "fb page likes", "page like", "fb like"], "Page Like Campaign"),
+    (["anniversary", "64th anniversary"], "Anniversary Campaign"),
+    (["women's day", "women day", "women_s day"], "Women's Day"),
+    (["yes teen", "yesteen", "idb biz teen"], "Yes Teen"),
+    (["4m digital", "4 m digital"], "Digital Customers Campaign"),
+    (["best web"], "Web Campaign"),
+    (["disaster relief", "disaster fund"], "CSR Campaign"),
+    (["ubereats", "uber eats"], "UberEats Promotion"),
+    (["birth freedom"], "Birth Freedom Campaign"),
+    (["people_s tower", "peoples tower"], "Tower Opening"),
+    (["doodaru paranama", "dooDaru"], "DooDaru Campaign"),
+    (["children_s day", "children day"], "Children's Day Campaign"),
+    (["ethera udana"], "Ethera Udana Campaign"),
+    (["digital ticketing", "digital ticket"], "Digital Ticketing"),
+    (["technnovation", "technovation"], "Technovation Campaign"),
+    (["shangri-la", "shangri la"], "Shangri-La Promotion"),
+    (["yt campaign", "yt video campaign", "youtube campaign"], "YouTube Campaign"),
+    (["tv program", "tv programme", "ආදරණීය", "වින්දනීය", "ශනිදා", "හත්වෙනි"], "TV Program Boosting"),
+    (["empowering tomorrow", "innovators"], "Innovators Campaign"),
+    (["sme loan leads", "sme loan leads"], "SME Loan"),
+    (["1st day in 1st lesson", "first lesson"], "CSR Campaign"),
+    (["always on brand", "brand recall"], "Brand Awareness"),
+    (["ceo interview", "contribution for sme"], "Corporate Campaign"),
+]
+
+
+def _infer_product_from_filename(filename: str, client: str) -> str | None:
+    """Try to infer product name from filename using keyword matching."""
+    name_lower = filename.lower()
+    if client == "Peoples Bank":
+        for keywords, product_name in _PB_PRODUCT_KEYWORDS:
+            if any(kw in name_lower for kw in keywords):
+                return product_name
+    return None
+
+
 def infer_client_product(path: Path) -> tuple[str, str]:
     """Infer client and product from the directory structure."""
     parts = path.parts
@@ -1330,19 +1379,19 @@ def infer_client_product(path: Path) -> tuple[str, str]:
         pd_lower = product_dir.lower()
         # Classify the subdirectory
         if "kpi" in pd_lower:
-            # KPI/performance folder — product is "KPI Reports" but campaign data lives here
-            product = None  # will be inferred from campaign metadata
+            # KPI/performance folder — try keyword inference from filename
+            product = _infer_product_from_filename(path.stem, client)
         elif _PERIOD_PATTERN.match(product_dir):
-            # Date-based directory (e.g. "January 2026", "March 2026") — product unknown
-            product = None
+            # Date-based directory (e.g. "January 2026", "March 2026") — try keyword inference
+            product = _infer_product_from_filename(path.stem, client)
         elif path.suffix.lower() in (".xlsx",) and len(remaining) == 2:
             # File is directly inside the client folder with no product subfolder
-            product = None  # will be inferred from campaign metadata
+            product = _infer_product_from_filename(path.stem, client)
         else:
             product = product_dir
     else:
-        # File directly in client folder — no product directory
-        product = None
+        # File directly in client folder — try keyword inference
+        product = _infer_product_from_filename(path.stem, client)
 
     return client, product or "Unknown"
 
@@ -1412,9 +1461,21 @@ def process_file(
 # New entity discovery
 # ---------------------------------------------------------------------------
 KNOWN_PRODUCTS = {
-    "Credit Cards", "Leasing", "Remittance", "FX-FUTURE", "Christmas Campaign", "SME",
+    # Fonterra
     "Anchor PediaPro", "Anchor Hot Chocolate", "Anchor Milk", "Anchor Newdale",
+    # Ritzbury
     "Deckers", "Choco Bar",
+    # Peoples Bank — original seed
+    "Credit Cards", "Leasing", "Remittance", "FX-FUTURE", "Christmas Campaign", "SME",
+    # Peoples Bank — additional products inferred from files
+    "Vehicle Loan", "Housing Loan", "Professional Loan", "SME Loan", "Business Loan",
+    "Christmas Campaign", "Vanitha Vasana Credit Card", "Pay App", "Page Like Campaign",
+    "Anniversary Campaign", "Women's Day", "Yes Teen", "Digital Customers Campaign",
+    "Web Campaign", "CSR Campaign", "UberEats Promotion", "Birth Freedom Campaign",
+    "Tower Opening", "DooDaru Campaign", "Children's Day Campaign", "Ethera Udana Campaign",
+    "Digital Ticketing", "Technovation Campaign", "Shangri-La Promotion", "YouTube Campaign",
+    "TV Program Boosting", "Innovators Campaign", "Brand Awareness", "Corporate Campaign",
+    "Card Offers", "Business Loan",
 }
 
 
